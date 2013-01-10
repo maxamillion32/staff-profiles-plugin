@@ -1,11 +1,11 @@
 <?php 
 /*
 Plugin Name: StaffProfiles
-Plugin URI: http://code.google.com/p/staff-profiles-plugin/
+Plugin URI: http://essl-pvac.github.com/plugins/staff-profiles-plugin/
 Description: Plugin to enable additional profile fields for members of University staff
 Author: Peter Edwards / Small Hadron Collider
 Author URI: http://www.essl.leeds.ac.uk/for-staff/staff/edwards.html
-Version: 0.3.1
+Version: 1.1
 License: GPL3
 
 This program is free software; you can redistribute it and/or modify
@@ -33,118 +33,132 @@ if ( ! class_exists("StaffProfiles") ):
  */
 class StaffProfiles
 {
-    /**
-     * constructor - disallow instantiation
-     */
-    final private function StaffProfiles()	{}
+	/**
+	 * constructor - disallow instantiation
+	 */
+	final private function StaffProfiles()	{}
 	
 	/**
 	 * constructior (PHP5) 
 	 */
 	final private function __construct() {}
-	
-	static $staff_types = array(
-        
-        'Key Staff' => 'key',
-        'Academic Staff' => 'academic',
-        'Technical & Support Staff' => 'technical',
-        'Visiting & Emeritus Staff' => 'visitor',
-        'PhD Students' => 'phd',
-        'Graduates' => 'graduates'
-    );
-
-    static $publication_types = array(
-    	"Book",
-    	"Journal article",
-    	"Chapter",
-    	"Conference",
-    	"Report",
-    	"Internet publication",
-    	"Performance",
-    	"Composition",
-    	"Exhibition",
-    	"Other",
-    	"Artefact",
-    	"Design",
-    	"Patent",
-    	"Software",
-    	"Poster",
-    	"Scholarly edition",
-    	"Thesis / Dissertation"
-    );
 
 	/**
-     * registers all actions in Wordpress API
+	 * plugin version
+	 */
+	static $version = '1.1';
+	
+	static $staff_types = array(
+		'Key Staff' => 'key',
+		'Academic Staff' => 'academic',
+		'Technical & Support Staff' => 'technical',
+		'Visiting & Emeritus Staff' => 'visitor',
+		'PhD Students' => 'phd',
+		'Graduates' => 'graduates'
+	);
+
+	static $publication_types = array(
+		"Book",
+		"Journal article",
+		"Chapter",
+		"Conference",
+		"Report",
+		"Internet publication",
+		"Performance",
+		"Composition",
+		"Exhibition",
+		"Other",
+		"Artefact",
+		"Design",
+		"Patent",
+		"Software",
+		"Poster",
+		"Scholarly edition",
+		"Thesis / Dissertation"
+	);
+
+	/**
+	 * registers all actions in Wordpress API
 	 */
 	public static function register()
 	{
-        /* add actions to show extra fields */
-        /*
-         * _user calls save_extra profile_fields with $priv set to 'user'
-         * _admin sets $priv to 'admin'
-         * Not a very elegant method, but not sure there's anyway to avoid it with the add_action method - can't add extra arguments?
-         */
+		/************************************
+		 * Profile additional fields        *
+		 ************************************/
+
+		/* add actions to show extra fields in profile form */
 		add_action( 'show_user_profile', array('StaffProfiles', 'show_extra_profile_fields_user') );
-        add_action( 'edit_user_profile', array('StaffProfiles', 'show_extra_profile_fields_admin') );
-        /* add actions to save extra fields */
-        add_action( 'personal_options_update', array('StaffProfiles', 'save_extra_profile_fields_user') );
-        add_action( 'edit_user_profile_update', array('StaffProfiles', 'save_extra_profile_fields_admin') );
+		add_action( 'edit_user_profile', array('StaffProfiles', 'show_extra_profile_fields_admin') );
+
+		/* add actions to save extra fields */
+		add_action( 'personal_options_update', array('StaffProfiles', 'save_extra_profile_fields_user') );
+		add_action( 'edit_user_profile_update', array('StaffProfiles', 'save_extra_profile_fields_admin') );
+
+		/* filter to remove password fields from profile */
+		add_filter('show_password_fields', array('StaffProfiles', 'remove_password_fields'), 10, 1);
+
+		/* filter to remove contact methods fields from profile */
+		add_filter('user_contactmethods', array('StaffProfiles', 'remove_contact_methods'), 10, 1);
+
+		/* filters to add paste buttons to the teeny mce editor */
+   		add_filter( 'teeny_mce_plugins', array('StaffProfiles', 'teeny_mce_plugins'), 10, 2);
+   		add_filter( 'teeny_mce_buttons', array('StaffProfiles', 'teeny_mce_buttons'), 10, 2);
+
+		/* enqueues scripts for admin side */
+		add_action( 'admin_enqueue_scripts', array('StaffProfiles', 'add_admin_scripts'));
+
+		/************************************
+		 * People post type                 *
+		 ************************************/
+		
+		/* Add People custom post type and staff types taxonomy */
+		add_action( 'init', array('StaffProfiles', 'add_custom_type' ), 181 );
+
+		/* run the upgrade routine */
+		add_action( 'init', array('StaffProfiles', 'upgrade'), 182 );
+
+		/* customise People post type */
+		add_action( 'add_meta_boxes', array('StaffProfiles', 'register_metaboxes' ) );
+		add_action( 'save_post', array('StaffProfiles','save_metaboxes' ));
+
+		/* template redirections */
+		add_filter( 'single_template', array('StaffProfiles', 'people_template'));
+		add_filter( 'archive_template', array('StaffProfiles', 'people_archive_template'));
+
 		/* add an admin page */
-    	add_action('admin_menu', array('StaffProfiles', 'add_menus'));
-    	/* add shortcode */
-        add_shortcode('stafflist', array('StaffProfiles', 'staff_list_shortcode') );
-        /* enqueues scripts if neccessary */
-        add_action('admin_print_scripts', array('StaffProfiles', 'init'));
-        /* filter to remove password fields from profile */
-        add_filter('show_password_fields', array('StaffProfiles', 'remove_password_fields'), 10, 1);
-        /* filter to remove contact methods fields from profile */
-        add_filter('user_contactmethods', array('StaffProfiles', 'remove_contact_methods'), 10, 1);
-        /* filters to add paste buttons to the teeny mce editor */
-   	    add_filter("teeny_mce_plugins", array("StaffProfiles", "teeny_mce_plugins"), 10, 2);
-   	    add_filter("teeny_mce_buttons", array("StaffProfiles", "teeny_mce_buttons"), 10, 2);
-
-        
-        /* Add shortcode for Staff Profile Page */
-        add_shortcode('staffprofile', array('StaffProfiles', 'get_staffprofile'));
-        add_action('wp_head', array('StaffProfiles','add_staffprofile_css'));
-   //     add_action('admin_head', array('StaffProfiles','add_staffprofile_admin_css'));
-        add_action('init', array('StaffProfiles','add_staffprofile_js'));
-        
-        /* Add People custom post type */
-        add_action( 'init', array('StaffProfiles', 'add_custom_type' ));
-        add_action( 'add_meta_boxes', array('StaffProfiles', 'register_meta_box' ) );
-        add_action( 'save_post', array('StaffProfiles','uol_save_staff_id' ));
-        add_filter('single_template', array('StaffProfiles', 'people_template'));
-        add_filter('archive_template', array('StaffProfiles', 'people_archive_template'));
-        add_action( 'save_post', array('StaffProfiles', 'add_post_meta') );
-        add_action( 'admin_print_scripts-post-new.php', array('StaffProfiles', 'people_admin_scripts_styles' ) );
-        add_action( 'admin_print_scripts-post.php', array('StaffProfiles', 'people_admin_scripts_styles' ) );
-
-        /* symplectic */
-        add_shortcode( 'symplectic', array( 'StaffProfiles', 'get_publications' ) );
+		add_action('admin_menu', array('StaffProfiles', 'add_admin_page'));
 	}
 	
-    /* remove password update field */
-    public static function remove_password_fields($profile)
-    {
-	    return false;
-    }
+	/**
+	 * enqueue plugin script
+	 */
+ 	public static function add_admin_scripts()
+ 	{   
+		wp_enqueue_script('staff-profiles-admin-js', plugins_url('/js/admin.min.js', __FILE__), array('jquery'));
+		//wp_enqueue_style('staff-profiles-admin-css', plugins_url('/css/admin.min.css', __FILE__), array('jquery-ui'));
+	}
 
-    /* remove all those groovy contact methods */
-    public static function remove_contact_methods($methods)
-    {
-	    return array();
-    }
-    
-    public static function show_extra_profile_fields_admin($user)
-    {
-    	self::show_extra_profile_fields($user, 'admin');
-    }
-    
-    public static function show_extra_profile_fields_user($user)
-    {
-    	self::show_extra_profile_fields($user, 'user');
-    }
+	/* remove password update field */
+	public static function remove_password_fields($profile)
+	{
+		return false;
+	}
+
+	/* remove all those groovy contact methods */
+	public static function remove_contact_methods($methods)
+	{
+		return array();
+	}
+	
+	public static function show_extra_profile_fields_admin($user)
+	{
+		self::show_extra_profile_fields($user, 'admin');
+	}
+	
+	public static function show_extra_profile_fields_user($user)
+	{
+		self::show_extra_profile_fields($user, 'user');
+	}
 	
 	/**
 	 * prints extra profile fields on the end of the user profile editing form
@@ -177,26 +191,26 @@ class StaffProfiles
 	}
 	
 	public static function save_extra_profile_fields_admin($user_id)
-    {
-    	self::save_extra_profile_fields($user_id, 'admin');
-    }
-    
-    public static function save_extra_profile_fields_user($user_id)
-    {
-    	self::save_extra_profile_fields($user_id, 'user');
-    }
-    
+	{
+		self::save_extra_profile_fields($user_id, 'admin');
+	}
+	
+	public static function save_extra_profile_fields_user($user_id)
+	{
+		self::save_extra_profile_fields($user_id, 'user');
+	}
+	
 	/**
 	 * saves data from the extra profile fields to usermeta
 	 * @param integer $user_id
 	 */
 	public static function save_extra_profile_fields($user_id, $priv)
 	{
-	    /* make sure the current user can do this */
+		/* make sure the current user can do this */
 		if ( !current_user_can( 'edit_user', $user_id ) ) {
-            return false;
-        }
-        //print_r($_POST);exit;
+			return false;
+		}
+		//print_r($_POST);exit;
 		$fields = self::get_profile_fields($priv);
 		foreach ($fields as $field)
 		{
@@ -213,7 +227,7 @@ class StaffProfiles
 			}
 			else
 			{
-			    update_usermeta( $user_id, $field["name"], $_POST[$field["name"]] );
+				update_usermeta( $user_id, $field["name"], $_POST[$field["name"]] );
 			}
 			if ($field["name"] == 'pubtypes_sortorder') {
 				if (isset($_POST['pubtypes_sortorder_delete'])) {
@@ -233,34 +247,34 @@ class StaffProfiles
 	 */
 	public static function get_textarea($user, $field_name, $field_label, $field_description, $is_richtext = false)
 	{
-        /* wordpress richtext editor ID can only contain lowercase letters! */
-        $editor_id = preg_replace( "/[^a-z]*/", "", strtolower($field_name) );
-	    $out = sprintf("  <tr>\n    <th><label for=\"%s\">%s</label></th>\n", $editor_id, $field_label);
-        if ($is_richtext)
-        {
-            /* use wp-editor but capture output in a buffer */
-            ob_start();
-            /* options for editor */
-            $options = array(
-                //"wpautop" => true,
-                "media_buttons" => false,
-                "textarea_name" => $field_name,
-                "textarea_rows" => 3,
-                "teeny" => true //use minimal editor configuration
-            );
-            /* "echo" the editor */
-            wp_editor(get_the_author_meta( $field_name, $user->ID ), $editor_id, $options );
-            /* get the output buffer */
-            $editor = ob_get_contents();
-            /* clean the output buffer */
-            ob_clean();
-            /* put it where we want it */
-            $out .= sprintf("    <td>\n      %s<br />", $editor); 
-        } else {
-    		$out .= sprintf("    <td>\n      <textarea name=\"%s\" id=\"%s\" rows=\"8\" cols=\"30\">%s</textarea><br />\n", $field_name, $editor_id, esc_attr( get_the_author_meta( $field_name, $user->ID ) ));
-        }
-        $out .= sprintf("      <span class=\"description\">%s</span>\n    </td>\n  </tr>\n", $field_description);
-        return $out;
+		/* wordpress richtext editor ID can only contain lowercase letters! */
+		$editor_id = preg_replace( "/[^a-z]*/", "", strtolower($field_name) );
+		$out = sprintf("  <tr>\n	<th><label for=\"%s\">%s</label></th>\n", $editor_id, $field_label);
+		if ($is_richtext)
+		{
+			/* use wp-editor but capture output in a buffer */
+			ob_start();
+			/* options for editor */
+			$options = array(
+				//"wpautop" => true,
+				"media_buttons" => false,
+				"textarea_name" => $field_name,
+				"textarea_rows" => 3,
+				"teeny" => true //use minimal editor configuration
+			);
+			/* "echo" the editor */
+			wp_editor(get_the_author_meta( $field_name, $user->ID ), $editor_id, $options );
+			/* get the output buffer */
+			$editor = ob_get_contents();
+			/* clean the output buffer */
+			ob_clean();
+			/* put it where we want it */
+			$out .= sprintf("	<td>\n	  %s<br />", $editor); 
+		} else {
+			$out .= sprintf("	<td>\n	  <textarea name=\"%s\" id=\"%s\" rows=\"8\" cols=\"30\">%s</textarea><br />\n", $field_name, $editor_id, esc_attr( get_the_author_meta( $field_name, $user->ID ) ));
+		}
+		$out .= sprintf("	  <span class=\"description\">%s</span>\n	</td>\n  </tr>\n", $field_description);
+		return $out;
 	}
 
 	public static function teeny_mce_plugins($plugins, $editor_id)
@@ -288,10 +302,10 @@ class StaffProfiles
 	 */
 	public static function get_textinput($user, $field_name, $field_label, $field_description)
 	{
-		$out = sprintf("  <tr>\n    <th><label for=\"%s\">%s</label></th>\n", $field_name, $field_label);
-		$out .= sprintf("    <td>\n      <input type=\"text\" name=\"%s\" id=\"%s\" size=\"30\" value=\"%s\" /><br />\n", $field_name, $field_name, esc_attr( get_the_author_meta( $field_name, $user->ID ) ));
-        $out .= sprintf("      <span class=\"description\">%s</span>\n    </td>\n  </tr>\n", $field_description);
-        return $out;
+		$out = sprintf("  <tr>\n	<th><label for=\"%s\">%s</label></th>\n", $field_name, $field_label);
+		$out .= sprintf("	<td>\n	  <input type=\"text\" name=\"%s\" id=\"%s\" size=\"30\" value=\"%s\" /><br />\n", $field_name, $field_name, esc_attr( get_the_author_meta( $field_name, $user->ID ) ));
+		$out .= sprintf("	  <span class=\"description\">%s</span>\n	</td>\n  </tr>\n", $field_description);
+		return $out;
 	}
 
 	/**
@@ -331,17 +345,17 @@ class StaffProfiles
 		$out .= sprintf('</ul><input type="hidden" id="%s" name="%s" value="%s" />', $field_name, $field_name, implode(",", $fields));
 		$out .= '<script type="text/javascript">';
 		$out .= "\njQuery(function($){\n";
-		$out .= "    $('#" . $field_name . "_sortable li').css({border:'1px solid #ccc',background:'#efefef',margin:'1px 0',padding:'3px',display:'block',width:'300px',cursor:'move'});\n";
-		$out .= "    $('#" . $field_name . "_sortable').sortable({\n";
-		$out .= "        update:function(event,ui){\n";
-		$out .= "            var fields = [];\n";
-		$out .= "            $('#" . $field_name . "_sortable li').each(function(){\n";
-		$out .= "                fields.push($(this).text());\n";
-		$out .= "            });\n";
-		$out .= "            $('#" . $field_name . "').val(fields.join(','));\n";
-		$out .= "        }\n";
-		$out .= "    });\n";
-		$out .= "    $('#" . $field_name . "_sortable').disableSelection();\n";
+		$out .= "	$('#" . $field_name . "_sortable li').css({border:'1px solid #ccc',background:'#efefef',margin:'1px 0',padding:'3px',display:'block',width:'300px',cursor:'move'});\n";
+		$out .= "	$('#" . $field_name . "_sortable').sortable({\n";
+		$out .= "		update:function(event,ui){\n";
+		$out .= "			var fields = [];\n";
+		$out .= "			$('#" . $field_name . "_sortable li').each(function(){\n";
+		$out .= "				fields.push($(this).text());\n";
+		$out .= "			});\n";
+		$out .= "			$('#" . $field_name . "').val(fields.join(','));\n";
+		$out .= "		}\n";
+		$out .= "	});\n";
+		$out .= "	$('#" . $field_name . "_sortable').disableSelection();\n";
 		$out .= "});\n</script>\n";
 		return $out;
 	}
@@ -361,33 +375,20 @@ class StaffProfiles
 			$checked = 'checked="checked"';
 		}
 		
-		$out = sprintf("  <tr>\n    <th><label for=\"%s\">%s</label></th>\n", $field_name, $field_label);
-		$out .= sprintf("    <td>\n      <input type=\"checkbox\" name=\"%s\" id=\"%s\" $checked />\n", $field_name, $field_name);
-        $out .= sprintf("      <span class=\"description\">%s</span>\n    </td>\n  </tr>\n", $field_description);
-        return $out;
+		$out = sprintf("  <tr>\n	<th><label for=\"%s\">%s</label></th>\n", $field_name, $field_label);
+		$out .= sprintf("	<td>\n	  <input type=\"checkbox\" name=\"%s\" id=\"%s\" $checked />\n", $field_name, $field_name);
+		$out .= sprintf("	  <span class=\"description\">%s</span>\n	</td>\n  </tr>\n", $field_description);
+		return $out;
 	}
 	
 	/**
-	 * enqueue plugin script
+	 * gets currently configured profile fields
+	 * Currently uses an array to describe the fields, but could use a plugin administration
+	 * page to enable different installations to configure the fields
 	 */
- 	public static function init()
- 	{   
-        /* add javascript when on profile page */
- 		if (preg_match('/wp-admin\/(profile|user-edit).php$/i', $_SERVER['SCRIPT_NAME']))
- 		{
-            wp_register_script('staffprofiles_admin', plugins_url('/js/Admin.js', __FILE__), array('jquery'));
-		    wp_enqueue_script('staffprofiles_admin', array('jquery'));
-        }
-    }
-    
-    /**
-     * gets currently configured profile fields
-     * Currently uses an array to describe the fields, but could use a plugin administration
-     * page to enable different installations to configure the fields
-     */
-    public static function get_profile_fields($priv)
-    {
-    	/**
+	public static function get_profile_fields($priv)
+	{
+		/**
 		 * profile fields used in the form
 		 */
 		$profile_fields = array();
@@ -395,346 +396,298 @@ class StaffProfiles
 		// Show staff type options only on admin page
 		if($priv == 'admin')
 		{
-            foreach (self::$staff_types as $key => $value) {
-
-                $profile_fields[] = array(
-    				"name" => "is_".$value,
-    		        "label" => $key,
-    		        "description" => "Please tick if ".$key,
-    		        "type" => "checkbox"
-    		    );
-            }
-		    $profile_fields[] = array(
-		        "name" => "pubtypes_sortorder",
-		        "label" => "Publication sort order",
-		        "description" => "Sort the order of the publication types in your list by dragging/dropping the items above",
-		        "type" => "sortable_types"
-		    );
+			$profile_fields[] = array(
+				"name" => "pubtypes_sortorder",
+				"label" => "Publication sort order",
+				"description" => "Sort the order of the publication types in your list by dragging/dropping the items above",
+				"type" => "sortable_types"
+			);
 		}
 		
 		$profile_fields[] = array(
-	        "name" => "title",
-	        "label" => "Title",
-	        "description" => "Please enter your title (e.g. Dr, Mr, Mrs)",
-	        "type" => "text"
-	    );
+			"name" => "title",
+			"label" => "Title",
+			"description" => "Please enter your title (e.g. Dr, Mr, Mrs)",
+			"type" => "text"
+		);
 		
 		// On admin page these boxes display anyway
 		if($priv == 'user')
 		{
 			$profile_fields[] = array(
-		        "name" => "first_name",
-		        "label" => "First Name",
-		        "description" => "",
-		        "type" => "text"
-		    );
+				"name" => "first_name",
+				"label" => "First Name",
+				"description" => "",
+				"type" => "text"
+			);
 		   $profile_fields[] =  array(
-		        "name" => "last_name",
-		        "label" => "Last Name",
-		        "description" => "",
-		        "type" => "text"
-		    );
+				"name" => "last_name",
+				"label" => "Last Name",
+				"description" => "",
+				"type" => "text"
+			);
 		}
 		
 		$temp_array = array(
-            array(
-                "name" => "telephone",
-                "label" => "Telephone",
-                "description" => "Please enter your office phone number in the form 0113 123 4567",
-                "type" => "text"
-            ),
-            
-            array(
-                "name" => "twitter",
-                "label" => "Twitter",
-                "description" => "Enter your twitter username here",
-                "type" => "text"
-            ),
+			array(
+				"name" => "telephone",
+				"label" => "Telephone",
+				"description" => "Please enter your office phone number in the form 0113 123 4567",
+				"type" => "text"
+			),
+			
+			array(
+				"name" => "twitter",
+				"label" => "Twitter",
+				"description" => "Enter your twitter username here",
+				"type" => "text"
+			),
 
-            array(
-                "name" => "location",
-                "label" => "Location",
-                "description" => "Please enter your office building and room number (e.g. Clothworkers' Building South, Room 1.02)",
-                "type" => "text"
-            ),
+			array(
+				"name" => "location",
+				"label" => "Location",
+				"description" => "Please enter your office building and room number (e.g. Clothworkers' Building South, Room 1.02)",
+				"type" => "text"
+			),
 
-            array(
-                "name" => "office_hours",
-                "label" => "Office Hours",
-                "description" => "Please enter your regular office hours (e.g. Monday - Thursday, 1.00pm. - 4.00pm.)",
-                "type" => "text"
-            ),
+			array(
+				"name" => "office_hours",
+				"label" => "Office Hours",
+				"description" => "Please enter your regular office hours (e.g. Monday - Thursday, 1.00pm. - 4.00pm.)",
+				"type" => "text"
+			),
 		
-            array(
-                    "name" => "position",
-                    "label" => "Position",
-                    "description" => "Please enter your formal job title(s) e.g. Senior Lecturer in International Communications",
-                    "type" => "text"
-            ),
-            
-            array(
-                    "name" => "qualification",
-                    "label" => "Qualifications",
-                    "description" => "Please enter your academic qualifications",
-                    "type" => "text"
-            ),
-            
-            array(
-                    "name" => "bio_short",
-                    "label" => "Biography Summary",
-                    "description" => "Please enter a very brief summary of your role including areas of expertise and research interests. Max. 30 words",
-                    "type" => "richtext"
-            ),
-            
-            array(
-                    "name" => "bio",
-                    "label" => "Biographical Info",
-                    "description" => "Please enter a longer biography (150 - 250 words)",
-                    "type" => "richtext"
-            ),
-		    
-		    array(
-		        "name" => "research_interests",
-		        "label" => "Research Interests",
-		        "description" => "Please give details of your research list as a series of bullet points followed by a paragraph giving further detail if required",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "teaching",
-		        "label" => "Teaching",
-		        "description" => "Please provide deteails of the modules you teach / coordinate along with any other teaching responsibilities",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "responsibilities",
-		        "label" => "Departmental Responsibilities",
-		        "description" => "Please outline any additional responsibilities you have in your department (e.g. Director of Research, Exams Officer etc.)",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "publications",
-		        "label" => "Publications &amp; Research Outputs",
-		        "description" => "Please enter your six digit payroll ID (e.g. 901234) (feed from Symplectic)",
-		        "type" => "text"
-		    ),
-		    array(
-		        "name" => "publication_status_null",
-		        "label" => "",
-		        "description" => "Tick this box to include publications <em>with no status set</em> in your list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_status_accepted",
-		        "label" => "",
-		        "description" => "Tick this box to include &ldquo;Accepted&rdquo; publications in your list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_status_submitted",
-		        "label" => "",
-		        "description" => "Tick this box to include &ldquo;Submitted&rdquo; publications in your list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_status_in_preparation",
-		        "label" => "",
-		        "description" => "Tick this box to include &ldquo;In Preparation&rdquo; publications in your list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_status_unpublished",
-		        "label" => "",
-		        "description" => "Tick this box to include &ldquo;Unpublished&rdquo; publications in your list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_include_abstract",
-		        "label" => "",
-		        "description" => "Tick this box to include the <strong>abstract</strong> field in your  publications list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_include_notes",
-		        "label" => "",
-		        "description" => "Tick this box to include the <strong>notes</strong> field in your  publications list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_include_authorurl",
-		        "label" => "",
-		        "description" => "Tick this box to include the <strong>author url</strong> field in your  publications list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "publication_include_repositoryurl",
-		        "label" => "",
-		        "description" => "Tick this box to include the <strong>repository url</strong> field in your  publications list",
-		        "type" => "checkbox"
-		    ),
-		    array(
-		        "name" => "research_projects",
-		        "label" => "Research Projects & Grants",
-		        "description" => "Please provide details of research projects and awards (past, current and proposed)",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "research_groups",
-		        "label" => "Research Centres & Groups",
-		        "description" => "Please provide details of any research centres / groups of which you are a member.",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "appointments",
-		        "label" => "External Appointments",
-		        "description" => "e.g. External examiner, editor, member / chair of advisory boards, conference organising committees etc.",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "supervision",
-		        "label" => "PhD & Postdoctoral Supervision",
-		        "description" => "Please list current and past PhD and postdoctoral supervisees and the topic of their research",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "phd",
-		        "label" => "PhD Thesis",
-		        "description" => "Please enter the abstract of your PhD thesis and a link to the full text if available",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "practice",
-		        "label" => "Professional Practice",
-		        "description" => "e.g. exhibitions, performances, compositions, media projects etc.",
-		        "type" => "richtext"
-		    ),
-		    array(
-		        "name" => "links",
-		        "label" => "Links",
-		        "description" => "Please provide links to any websites related to your work which may be of interest to visitors",
-		        "type" => "richtext"
-		    )
+			array(
+					"name" => "position",
+					"label" => "Position",
+					"description" => "Please enter your formal job title(s) e.g. Senior Lecturer in International Communications",
+					"type" => "text"
+			),
+			
+			array(
+					"name" => "qualification",
+					"label" => "Qualifications",
+					"description" => "Please enter your academic qualifications",
+					"type" => "text"
+			),
+			
+			array(
+					"name" => "bio_short",
+					"label" => "Biography Summary",
+					"description" => "Please enter a very brief summary of your role including areas of expertise and research interests. Max. 30 words",
+					"type" => "richtext"
+			),
+			
+			array(
+					"name" => "bio",
+					"label" => "Biographical Info",
+					"description" => "Please enter a longer biography (150 - 250 words)",
+					"type" => "richtext"
+			),
+			
+			array(
+				"name" => "research_interests",
+				"label" => "Research Interests",
+				"description" => "Please give details of your research list as a series of bullet points followed by a paragraph giving further detail if required",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "teaching",
+				"label" => "Teaching",
+				"description" => "Please provide deteails of the modules you teach / coordinate along with any other teaching responsibilities",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "responsibilities",
+				"label" => "Departmental Responsibilities",
+				"description" => "Please outline any additional responsibilities you have in your department (e.g. Director of Research, Exams Officer etc.)",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "publications",
+				"label" => "Publications &amp; Research Outputs",
+				"description" => "Please enter your six digit payroll ID (e.g. 901234) (feed from Symplectic)",
+				"type" => "text"
+			),
+			array(
+				"name" => "publication_status_null",
+				"label" => "",
+				"description" => "Tick this box to include publications <em>with no status set</em> in your list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_status_accepted",
+				"label" => "",
+				"description" => "Tick this box to include &ldquo;Accepted&rdquo; publications in your list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_status_submitted",
+				"label" => "",
+				"description" => "Tick this box to include &ldquo;Submitted&rdquo; publications in your list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_status_in_preparation",
+				"label" => "",
+				"description" => "Tick this box to include &ldquo;In Preparation&rdquo; publications in your list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_status_unpublished",
+				"label" => "",
+				"description" => "Tick this box to include &ldquo;Unpublished&rdquo; publications in your list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_include_abstract",
+				"label" => "",
+				"description" => "Tick this box to include the <strong>abstract</strong> field in your  publications list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_include_notes",
+				"label" => "",
+				"description" => "Tick this box to include the <strong>notes</strong> field in your  publications list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_include_authorurl",
+				"label" => "",
+				"description" => "Tick this box to include the <strong>author url</strong> field in your  publications list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_include_repositoryurl",
+				"label" => "",
+				"description" => "Tick this box to include the <strong>repository url</strong> field in your  publications list",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "research_projects",
+				"label" => "Research Projects & Grants",
+				"description" => "Please provide details of research projects and awards (past, current and proposed)",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "research_groups",
+				"label" => "Research Centres & Groups",
+				"description" => "Please provide details of any research centres / groups of which you are a member.",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "appointments",
+				"label" => "External Appointments",
+				"description" => "e.g. External examiner, editor, member / chair of advisory boards, conference organising committees etc.",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "supervision",
+				"label" => "PhD & Postdoctoral Supervision",
+				"description" => "Please list current and past PhD and postdoctoral supervisees and the topic of their research",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "phd",
+				"label" => "PhD Thesis",
+				"description" => "Please enter the abstract of your PhD thesis and a link to the full text if available",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "practice",
+				"label" => "Professional Practice",
+				"description" => "e.g. exhibitions, performances, compositions, media projects etc.",
+				"type" => "richtext"
+			),
+			array(
+				"name" => "links",
+				"label" => "Links",
+				"description" => "Please provide links to any websites related to your work which may be of interest to visitors",
+				"type" => "richtext"
+			)
 		);
-    	return array_merge($profile_fields, $temp_array);
-    }
-    /**
-     * staff list shortcode callback function
-     * @param array attributes of shortcode arguments
-     * @return string HTML
-     */
-    public static function staff_list_shortcode( $atts = false )
-    {
-    
-    }
+		return array_merge($profile_fields, $temp_array);
+	}
+	/**
+	 * staff list shortcode callback function
+	 * @param array attributes of shortcode arguments
+	 * @return string HTML
+	 */
+	public static function staff_list_shortcode( $atts = false )
+	{
+	
+	}
 
-    /**
-     * adds a menu item to tools
-     */
-    public static function add_menus()
-    {
-    	add_submenu_page('users.php', 'Staff Profiles', 'Staff Profiles', 'list_users', 'staff-profiles', array('StaffProfiles', 'admin_page') );
-    }
-    
-    /**
-     * prints a admin page which is added to the Wordpress Tools menu
-     */
-    public static function admin_page()
-    {
-        if (!current_user_can('administrator')) 
-        {
-    		wp_die('You do not have sufficient permissions to access this page.');
-    	}
-    	
+	/**
+	 * adds a menu item to People
+	 */
+	public static function add_admin_page()
+	{
+		add_submenu_page('edit.php?post_type=people', 'People admin', 'People admin', 'list_users', 'staff-profiles', array('StaffProfiles', 'admin_page') );
+	}
+	
+	/**
+	 * prints a admin page which is added to the Wordpress Tools menu
+	 */
+	public static function admin_page()
+	{
+		if (!current_user_can('administrator')) 
+		{
+			wp_die('You do not have sufficient permissions to access this page.');
+		}
+		
+		/* get users */
    		$users = get_users('orderby=nicename');
 
-    	/* process POST */
-    	if (isset($_POST['update-staff-profiles']))
-    	{
-    	   	update_option("pubtypes_sortorder", $_POST['pubtypes_sortorder']);
-    	   
-            foreach ($users as $user) :
-                $userID = $user->ID;
-                //update_user_meta( $userID, 'staff_page_url', $_POST['page-url-'.$userID] );
-                //update_user_meta( $userID, 'staff_image_url', $_POST['image-url-'.$userID] );
-                update_user_meta( $userID, 'publications', $_POST['symplectic-'.$userID] );
-                
-                foreach (self::$staff_types as $check)
-                {
-                    if (isset($_POST['is_'.$check.'-'.$userID]))
-                    {
-                        update_user_meta( $userID, 'is_'.$check, '1' );
-                    }
-                    else
-                    {
-                        update_user_meta( $userID, 'is_'.$check, '0' );
-                    }
-                }
-            endforeach;
-    	}
-    	?>
-    	
-    	<div class="wrap" id="profile-page">
-	       <div id="icon-users" class="icon32"><br></div>
-            <h2>Staff Profiles</h2>
-            <form id="your-profile" action="?page=staff-profiles" method="post">
-			<table class="staff-profiles widefat">
-			    <thead>
-			        <tr>
-			            <th>Staff Name</th>
-			            <th>Username</th>
-			            <th>Symplectic ID</th>
-			            <?php
-			                foreach (self::$staff_types as $key => $value) {
-			                ?>
-			                    <th><?php echo $key; ?></th>
-			                <?php
-			                }  
-			            ?>
-			        </tr>
-			    </thead>
-			    <tfoot>
-			        <tr>
-			            <th>Staff Name</th>
-			            <th>Username</th>
-			            <th>Symplectic ID</th>
-			            <?php
-			                foreach (self::$staff_types as $key => $value) {
-			                ?>
-			                    <th><?php echo $key; ?></th>
-			                <?php
-			                }  
-			            ?>
-			        </tr>
-			    </tfoot>
-				<tbody>
-    	<?php
-    	
-		foreach ($users as $user) :
-	
-        	$userID = $user->ID;
-        	
-        ?>
-		            <tr>
-		                <td><?php echo get_user_meta( $userID, 'first_name', true).' '.get_user_meta( $userID, 'last_name', true); ?></td>
-		                <td><?php echo get_userdata($userID)->user_login; ?></td>
-		                <td><input name="symplectic-<?php echo $userID; ?>" type="text" value="<?php echo get_user_meta( $userID, 'publications', true); ?>" /></td>
-		                <?php
-		                    foreach (self::$staff_types as $key => $value) {
-		                    ?>
-		                        <td><input name="is_<?php echo $value; ?>-<?php echo $userID; ?>" type="checkbox"<?php if(get_user_meta( $userID, 'is_'.$value, true)){echo 'checked="checked"';} ?> /></td>
-		                    <?php
-		                    }  
-		                ?>
-		            </tr>
-        
-        <?php
-        endforeach;
-    	
-    	?>
-			    </tbody>
-			</table>
-			<h2>Publications sort order</h2>
-			<p>Set the default sort order for the site by dragging and dropping the different publication type in this list:</p>
-		<?php
+   		/* get people pages */
+		$people_pages = get_posts(array(
+			'post_type' => 'people',
+			'numberposts' => -1
+		));
+
+		/* map people page IDs to usernames */
+		$pages_map = array();
+		foreach ($people_pages as $pp) {
+			$staff_id = get_post_meta($pp->ID, 'uol_staff_id', true);
+			if ($staff_id) {
+				$pages_map[$staff_id] = $pp->ID;
+			}
+		}
+
+		/* get staff types */
+		$staff_types = get_terms('staff_type');
+
+		/* process POST */
+		if (isset($_POST['update-staff-profiles']))	{
+			/* update publication type sort order */
+		   	update_option("pubtypes_sortorder", $_POST['pubtypes_sortorder']);
+		   	
+		   	/* update staff type sort order */
+		   	//update_option("stafftypes_sortorder", $_POST['stafftypes_sortorder']);
+			
+		   	/* update symplectic ID and staff types */
+			foreach ($users as $user) {
+
+				update_user_meta( $user->data->ID, 'publications', $_POST['symplectic-' . $user->data->ID] );
+				
+				$user_terms = array();
+				foreach ($staff_types as $term) {
+					if (isset($_POST['is_' . $term->slug . '-' . $user->data->ID]))	{
+						$user_terms[] = $term->term_id;
+					}
+				}
+				if (count($user_terms) && isset($pages_map[$user->data->user_login])) {
+					wp_set_object_terms($pages_map[$user->data->user_login], $user_terms, 'staff_type');
+				}
+			}
+		}
+		$submit_button = '<p class="submit"><input type="submit" name="update" id="submit" class="button-primary" value="Update"></p>';
+
+		print('<div class="wrap" id="profile-page"><div id="icon-users" class="icon32"><br></div><h2>Staff Profiles</h2>');
+		print('<form id="your-profile" action="?page=staff-profiles" method="post">');
+
+		/* publication stypes sort order */
+		print('<h2>Publications sort order</h2><p>Set the default sort order for the site by dragging and dropping the different publication type in this list:</p>');
 
 		$defaults = get_option("pubtypes_sortorder");
 
@@ -745,81 +698,206 @@ class StaffProfiles
 		}
 		echo self::sortable_list("pubtypes_sortorder", $default_order);
 
+		print('<h2>Staff Pages</h2>');
+        print('<table class="staff-profiles widefat">');
+		$headers = '<tr><th>Staff Name</th><th>Page</th><th>Symplectic ID</th>';
+		foreach ($staff_types as $term) {
+			$headers .= sprintf('<th>%s</th>', $term->name);
+		}
+		$headers .= '</tr>';
+		printf('<thead>%s</thead><tfoot>%s</tfoot>', $headers, $headers);
+		
+		foreach ($users as $user) :
+			$userID = $user->data->ID;
+			if (!isset($pages_map[$user->data->user_login])) {
+				$page_link = sprintf('<a href="%s?post_type=people&amp;user_login=%d" title="Add page for %s" class="button-primary">Add page</a>', admin_url('post-new.php'), $user->data->user_login, $user->data->display_name);
+			} else {
+				$page_link = sprintf('<a href="%s?action=edit&amp;post=%d" title="Edit page for %s" class="button-secondary">Edit page</a>', admin_url('post.php'), $pages_map[$user->data->user_login], $user->data->display_name);
+			}
 		?>
-			<p class="submit"><input type="submit" name="update-staff-profiles" id="submit" class="button-primary" value="Update Staff Profiles / Publication sort order"></p>
-		</form>
-	</div>
-    	
-    	<?php
-    }
-    
-    /**
-     * shortcode has be deprecated
-     */
-    public static function get_staffprofile($atts)
-	{
-	   echo '<p>Staff shortcode deprecated. Please use the People post type.</p>';
+				<tr>
+					<td><?php echo $user->data->display_name; ?></td>
+					<td><?php echo $page_link; ?></td>
+					<td><input name="symplectic-<?php echo $userID; ?>" type="text" value="<?php echo get_user_meta( $userID, 'publications', true); ?>" /></td>
+					<?php
+					foreach ($staff_types as $term) {
+						if (!isset($pages_map[$user->data->user_login])) {
+							$attr = ' disabled="disabled"';
+						} else {
+							$attr = has_term($term->term_id, 'staff_type', $pages_map[$user->data->user_login])? ' checked="checked"': '';
+						}
+						printf('<td><input name="is_%s-%d" type="checkbox"%s /></td>', $term->slug, $userID, $attr);
+					}  
+					?>
+				</tr>
+		<?php
+		endforeach;
+
+		print('</tbody></table>');
+		print('</form></div>');
 	}
 	
-	public static function add_staffprofile_css()
-	{
-		echo '<link rel="stylesheet" href="'.plugins_url('/css/StaffProfiles.css', __FILE__).'" />';
-	}
-/*	
-	public static function add_staffprofile_admin_css()
-	{
-		echo '<link rel="stylesheet" href="'.plugins_url('/css/StaffProfilesAdmin.css', __FILE__).'" />';
-	}
-*/	
-	public static function add_staffprofile_js()
-	{
-		wp_enqueue_script('staffprofiles_page', plugins_url('/js/Pages.js', __FILE__), array('jquery'));
-	}
 	
 	public static function add_custom_type()
 	{
 	   register_post_type( 'people',
-            array(
-                'labels' => array(
-                    'name' => __( 'People' ),
-                    'singular_name' => __( 'People' )
-                ),
-                'public' => true,
-                'has_archive' => true,
-                'hierarchical' => true,
-                'menu_position' => 20,
-                'menu_icon' => plugins_url('/css/menu-icon.png', __FILE__),
-                'supports' => array('title','editor','excerpt')
-            )
-        );
+			array(
+				'labels' => array(
+					'name' => __( 'People' ),
+					'singular_name' => __( 'People' )
+				),
+				'public' => true,
+				'has_archive' => true,
+				'hierarchical' => true,
+				'menu_position' => 20,
+				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
+				'supports' => array('title','editor','excerpt')
+			)
+		);
+		/* Add new hierarchical taxonomy (like categories) */
+		$category_labels = array(
+			'name' => 'Staff types',
+			'singular_name' => 'Staff types',
+			'search_items' => 'Search Staff types',
+			'all_items' => 'All Staff types',
+			'parent_item' => 'Parent Staff type',
+			'parent_item_colon' => 'Parent Staff type:',
+			'edit_item' => 'Edit Staff type', 
+			'update_item' => 'Update Staff type',
+			'add_new_item' => 'Add New Staff type',
+			'new_item_name' => 'New Staff type',
+			'menu_name' => 'Staff types'
+		);  
+		register_taxonomy('staff_type', array('people'), array(
+			'hierarchical' => true,
+			'labels' => $category_labels,
+			'show_ui' => true,
+			'query_var' => true,
+			'rewrite' => array( 
+				'slug' => 'people',
+				'with_front' => false,
+				'hierarchical' => false
+			)
+		));
 	}
 
-	public static function people_admin_scripts_styles()
+	public static function upgrade()
 	{
-		global $post_type;
-		if ('people' == $post_type) {
-			wp_enqueue_script('people_admin_script', plugins_url("/js/People.js", __FILE__), array('jquery','thickbox'));
-			wp_enqueue_style('thickbox');
+		$current_version = get_option("staffprofiles_version");
+		if ($current_version != self::$version) {
+			switch ($current_version) {
+				case false:
+					/**
+					 * v1.0 of this plugin had no version added
+					 * v1.1 moved staff types to a custom taxonomy
+					 */
+
+					/* get people pages */
+					$people_pages = get_posts(array(
+						'post_type' => 'people',
+						'numberposts' => -1
+					));
+
+					/* map people page IDs to usernames */
+					$pages_map = array();
+					foreach ($people_pages as $pp) {
+						$staff_id = get_post_meta($pp->ID, 'uol_staff_id', true);
+						if ($staff_id) {
+							$pages_map[$staff_id] = (int) $pp->ID;
+						}
+					}
+
+					/* get users */
+					$users = get_users(array('blog_id' => get_current_blog_id()));
+
+					/* add terms to custom taxonomy */
+					$terms = array();
+					foreach (self::$staff_types as $key => $value) {
+						/**
+						 * inserts terms into the staff_type taxonomy
+						 * return values are stored in the terms array for later use:
+						 * format: array('term_id'=>,'term_taxonomy_id'=>)
+						 * Had real problems with this, so had to do some sanity checks
+						 * which shouldn't be strictly neccessary
+						 */
+						$term = term_exists($value, 'staff_type');
+						if ($term === 0 || $term === null) {
+							$terms[$value] = wp_insert_term(
+								$key, // Staff type name
+	  							'staff_type', // Staff types taxonomy
+								array(
+									'description'=> '',
+									'slug' => $value
+								)
+							);
+						} else {
+							$terms[$value] = $term;
+						}
+						if (is_wp_error($terms[$value])) {
+							unset($terms[$value]);
+						}
+					}
+
+					/* get terms from staff profiles and add categories to people pages */
+					foreach ($users as $user) {
+						$user_terms = array();
+						foreach (self::$staff_types as $key => $value) {
+							if (get_user_meta( $user->data->ID, 'is_' . $value, true)) {
+								//print('<p>found type ' . $value . ' for user ' . $user->data->user_login . ' [ID:' . $user->data->ID . '] in profile.</p>');
+								$user_terms[] = $terms[$value]['term_id'];
+								delete_user_meta($user->data->ID, 'is_' . $value);
+							}
+						}
+						$user_terms = array_map('intval', $user_terms);
+						$user_terms = array_unique( $user_terms );
+						if (count($user_terms)) {
+							if (isset($pages_map[$user->data->user_login])) {
+								//print('<p>Adding terms ' . implode(',', $user_terms) . ' to people page ' . $pages_map[$user->data->user_login] . '</p>');
+								wp_set_object_terms($pages_map[$user->data->user_login], $user_terms, 'staff_type');
+							} else {
+								//print('<p>No page found for user ' . $user->data->user_login . '</p>');
+							}
+						} else {
+							//print('<p>No types found for user ' . $user->data->user_login . '</p>');
+						}
+					}
+
+					/* flush rewrite rules */
+					global $wp_rewrite;
+					$wp_rewrite->flush_rules();
+
+				case '1.1':
+					/* upgrade from 1.1 */
+			}
+
+			/* update the version option */
+			update_option("staffprofiles_version", self::$version);
 		}
 	}
-	
-	public static function register_meta_box()
+
+	/**
+	 * registers metaboxes for staff ID and photo
+	 */
+	public static function register_metaboxes()
 	{
 	   add_meta_box(
-            'staff_id_meta',
-            'Staff Wordpress ID / Username',
-            array('StaffProfiles', 'uol_staff_id_box'),
-            'people', 'normal', 'high'
-        );
-        add_meta_box(
-        	'staff_photo_url',
-        	'Staff Photo URL',
-        	array('StaffProfiles', 'uol_staff_photo_url_box'),
-        	'people', 'normal', 'high'
-	    );
+			'staff_id_meta',
+			'Staff Wordpress ID / Username',
+			array('StaffProfiles', 'staff_id_box'),
+			'people', 'normal', 'high'
+		);
+		add_meta_box(
+			'staff_photo_url',
+			'Staff Photo URL',
+			array('StaffProfiles', 'staff_photo_url_box'),
+			'people', 'normal', 'high'
+		);
 	}
 	
-	public static function uol_staff_id_box()
+	/**
+	 * staff ID metabox
+	 */
+	public static function staff_id_box()
 	{
 		wp_nonce_field( 'staff_id_meta_check', 'staff_id_meta_nonce' );
 		$post_id = false;
@@ -829,14 +907,13 @@ class StaffProfiles
 			$post_id = $_POST['post_ID'];
 		}
 		$staff_id = get_post_meta($post_id, 'uol_staff_id', true);
-	?>
-	   <label for="uol_staff_id">ID / Username</label>
-	   <input type="text" id="uol_staff_id" name="uol_staff_id" value="<?php echo addslashes($staff_id); ?>" />
-
-	<?php
+		printf('<label for="uol_staff_id">ID / Username</label><input type="text" id="uol_staff_id" name="uol_staff_id" value="%s" />', addslashes($staff_id));
 	}
 
-	public static function uol_staff_photo_url_box()
+	/**
+	 * staff photo metabox
+	 */
+	public static function staff_photo_url_box()
 	{
 		if (isset($_GET["post"])) {
 			$post_id = $_GET['post'];
@@ -844,97 +921,90 @@ class StaffProfiles
 			$post_id = $_POST['post_ID'];
 		}
 		$staff_photo_url = get_post_meta($post_id, 'uol_staff_photo_url', true);
-	?>
-	   <label for="uol_staff_photo_url">Photo URL:</label>
-	   <input type="text" id="uol_staff_photo_url" name="uol_staff_photo_url" class="widefat" value="<?php echo addslashes($staff_photo_url); ?>" />
-	<?php if ($staff_photo_url != "") : ?>
-		<img id="staff_photo_url_preview" style="float:right;margin:5px 0 0 10px" src="<?php echo $staff_photo_url; ?>" />
-	<?php endif; ?>
-	   <input id="upload_image_button" type="button" value="Upload" /><input id="clear_image_button" type="button" value="Clear" />
-	   <p>If you are uploading an image here, or choosing an existing image from the Media Library, clicking on the "Insert into Post" button for the image will put the image URL in the box above.</p><br class="clear" />
-	<?php
+		printf('<label for="uol_staff_photo_url">Photo URL:</label><input type="text" id="uol_staff_photo_url" name="uol_staff_photo_url" class="widefat" value="%s" />', addslashes($staff_photo_url));
+		if ($staff_photo_url != "") {
+			printf('<img id="staff_photo_url_preview" style="float:right;margin:5px 0 0 10px" src="%s" />', $staff_photo_url);
+		}
+		print('<input id="upload_image_button" type="button" value="Upload" /><input id="clear_image_button" type="button" value="Clear" />');
+		print('<p>If you are uploading an image here, or choosing an existing image from the Media Library, clicking on the "Insert into Post" button for the image will put the image URL in the box above.</p><br class="clear" />');
 	}
 	
-	public static function uol_save_staff_id( $post_id )
-    {
-        // verify not auto-saving
-        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
-        {
-            return;
-        }
-    
-        // verify source
-        if ( !isset($_POST['staff_id_meta_nonce']) || !wp_verify_nonce( $_POST['staff_id_meta_nonce'], 'staff_id_meta_check' ) )
-        {
-            return;
-        }
-    
-    
-        // Check permissions
-        if ( !current_user_can( 'edit_post', $post_id ) )
-        {
-            return;
-        }
-    
-        // Authenticated
-        $id = $_POST['uol_staff_id'];
-        add_post_meta($post_id, 'uol_staff_id', $id, true) or update_post_meta($post_id, 'uol_staff_id', $id);
-        $photo_url = $_POST['uol_staff_photo_url'];
-        add_post_meta($post_id, 'uol_staff_photo_url', $photo_url , true) or update_post_meta($post_id, 'uol_staff_photo_url', $photo_url );
-    }
-    
-    public static function people_template($single)
-    {
-        global $wp_query, $post;
+	/**
+	 * saves staff ID and photo URL metabox values
+	 */
+	public static function save_metaboxes( $post_id )
+	{
+		/* verify not auto-saving */
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			return;
+		}
+	
+		/* verify nonce */
+		if ( !isset($_POST['staff_id_meta_nonce']) || !wp_verify_nonce( $_POST['staff_id_meta_nonce'], 'staff_id_meta_check' ) ) {
+			return;
+		}
+	
+		/* Check permissions */
+		if ( !current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+	
+		/* save data from metaboxes */
+		$id = $_POST['uol_staff_id'];
+		add_post_meta($post_id, 'uol_staff_id', $id, true) or update_post_meta($post_id, 'uol_staff_id', $id);
+		$photo_url = $_POST['uol_staff_photo_url'];
+		add_post_meta($post_id, 'uol_staff_photo_url', $photo_url , true) or update_post_meta($post_id, 'uol_staff_photo_url', $photo_url );
 
-        if ($post->post_type == "people")
-        {
-            $path = dirname(__FILE__).'/single-people.php';
-            
-            if(file_exists($path))
-            {
-                return $path;
-            }
-        }
-        
-        return $single;
-    }
-    
-    public static function people_archive_template($archive)
-    {
-        global $wp_query, $post;
+		/* save layout data (do we ned this?) */
+		add_post_meta($post_id, 'layout_columns', '3', true);
+	}
+	
+	/**
+	 * single template for people post type
+	 */
+	public static function people_template($single)
+	{
+		global $wp_query, $post;
+		if ($post->post_type == "people") {
+			$path = dirname(__FILE__).'/single-people.php';
+			if (file_exists($path)) {
+				return $path;
+			}
+			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
+		}
+		return $single;
+	}
+	
+	/**
+	 * archive template for people post type
+	 */
+	public static function people_archive_template($archive)
+	{
+		global $wp_query, $post;
+		if ($post->post_type == "people") {
+			$path = dirname(__FILE__).'/archive-people.php';
+			if (file_exists($path)) {
+				return $path;
+			}
+			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
+		}
+		return $archive;
+	}
 
-        if ($post->post_type == "people")
-        {
-            $path = dirname(__FILE__).'/archive-people.php';
-            
-            if(file_exists($path))
-            {
-                return $path;
-            }
-        }
-        
-        return $archive;
-    }
+	/**
+	 * adds script and style to frontend
+	 */
+	public static function enqueue_frontend_scripts_and_styles()
+	{
+		wp_enqueue_script('staff-profiles-js', plugins_url('/js/people.min.js', __FILE__), array('jquery'), '1.1', true);
+		wp_enqueue_style('staff-profiles-css', plugins_url('/css/people.min.css', __FILE__));
+	}
    
-    public static function add_post_meta($post_id)
-    {
-        // verify not auto-saving
-        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
-        {
-            return;
-        }
-    
-        // Check permissions
-        if ( !isset( $_POST['post_type'] ) || ('people' != $_POST['post_type'] ) )
-        {
-            return;
-        }
-    
-        add_post_meta($post_id, 'layout_columns', '3', true);
-    
-    }
-
+	/**
+	 * filters publication type sort order
+	 * default set as site option, but can be overridden by user option
+	 * user option currently only available to admins
+	 */
 	public static function getPublicationTypesFilter($id = false)
 	{
 		$site_option = get_option("pubtypes_sortorder");
@@ -954,7 +1024,7 @@ class StaffProfiles
 	}
 
 	/**
-	 * Staff Publications shortcode
+	 * Staff Publications
 	 *		
 	 *	Possible $attrs
 	 *	===============
@@ -1003,7 +1073,7 @@ class StaffProfiles
 			/* Get, cache, and parse the publications */
 			$publicationsLookup = new PublicationsLookup($id, $cache, $cacheDir);
 
-            /* get all the possible attributes for publications to use as placeholders */
+			/* get all the possible attributes for publications to use as placeholders */
 			$possible_attributes = $publicationsLookup->getPossibleAttrNames();
 			
 			if(isset($limit))
@@ -1013,19 +1083,19 @@ class StaffProfiles
 
 				if (count($publications))
 				{
-	    			$output .= "<ul class=\"publications\">";
+					$output .= "<ul class=\"publications\">";
 
-			        foreach($publications as $publication)
-			        {
-	        	        $pub = array();
-	        	        foreach ($possible_attributes as $pa)
-	        	        {
-	        		        $pub[$pa] = $publication->getAttr($pa);
-	        	        }
-				        $output .= self::format_publication($pub);
-			        }
+					foreach($publications as $publication)
+					{
+						$pub = array();
+						foreach ($possible_attributes as $pa)
+						{
+							$pub[$pa] = $publication->getAttr($pa);
+						}
+						$output .= self::format_publication($pub);
+					}
 				
-				    $output .= "</ul>";
+					$output .= "</ul>";
 				}
 			}
 			else
@@ -1070,16 +1140,16 @@ class StaffProfiles
 						{
 							$output .= "<" . $header_level . ">" . ucwords($possible) . "s</" . $header_level . "><ul class=\"publications\">";
 			
-					        foreach($publications as $publication)
-					        {
-		            	        $pub = array();
-		            	        foreach ($possible_attributes as $pa)
-		            	        {
-		            		        $pub[$pa] = $publication->getAttr($pa);
-		            	        }
-						        $output .= self::format_publication($pub, $display);
-					        }
-		    			    $output .= "</ul>";
+							foreach($publications as $publication)
+							{
+								$pub = array();
+								foreach ($possible_attributes as $pa)
+								{
+									$pub[$pa] = $publication->getAttr($pa);
+								}
+								$output .= self::format_publication($pub, $display);
+							}
+							$output .= "</ul>";
 						}
 					}
 				}
@@ -1198,7 +1268,7 @@ class StaffProfiles
 	private static function format_Artefact($pub, $display)
 	{
 		return self::format_minimal($pub);
-    }
+	}
 
 	private static function format_Design($pub, $display)
 	{
@@ -1247,10 +1317,10 @@ class StaffProfiles
 		return $out;
 	}
 
-    private static function format_basics($pub)
-    {
-        $out = "";
-    	if (trim($pub["authors"]) != "") {
+	private static function format_basics($pub)
+	{
+		$out = "";
+		if (trim($pub["authors"]) != "") {
 			$out .= '<span class="authors">' . trim($pub["authors"]) . '</span> ';
 		} else {
 			if (isset($pub["editors"]) && trim($pub["editors"]) != "") {
@@ -1262,10 +1332,10 @@ class StaffProfiles
 		}
 		if (trim($pub["title"]) != "") {
 			if ((isset($pub["parenttitle"]) && trim($pub["parenttitle"]) !== "") || (isset($pub["journal"]) && trim($pub["journal"]) !== "")) {
-			    $class = "title-with-parent";
-			    $title = "&ldquo;" . trim($pub["title"]) . "&rdquo;";
+				$class = "title-with-parent";
+				$title = "&ldquo;" . trim($pub["title"]) . "&rdquo;";
 			} else {
-			    $class = "title";
+				$class = "title";
 				$title = trim($pub["title"]);
 			}
 			$out .= '<span class="' . $class . '">' . $title;
@@ -1295,15 +1365,15 @@ class StaffProfiles
 			$out .= ' <span class="series">' . trim($pub["series"]) . $sep . '</span> ';
 		}
 		return $out;
-    }
+	}
 
-    private static function format_publisher($pub)
-    {
-    	$out = "";
-    	if (isset($pub["placeofpublication"]) && trim($pub["placeofpublication"]) != "") {
-    		$sep = (substr(trim($pub["placeofpublication"]), -1) == ":")? "": ":";
-    		$out .= ' <span class="publish-place">' . trim($pub["placeofpublication"]) . $sep . '</span>';
-    	}
+	private static function format_publisher($pub)
+	{
+		$out = "";
+		if (isset($pub["placeofpublication"]) && trim($pub["placeofpublication"]) != "") {
+			$sep = (substr(trim($pub["placeofpublication"]), -1) == ":")? "": ":";
+			$out .= ' <span class="publish-place">' . trim($pub["placeofpublication"]) . $sep . '</span>';
+		}
 		if (isset($pub["publisher"]) && trim($pub["publisher"]) != "") {
 			$sep = (substr(trim($pub["publisher"]), -1) == ".")? "": ".";
 			if (isset($pub["publisherurl"]) && trim($pub["publisherurl"]) != "") {
@@ -1313,10 +1383,10 @@ class StaffProfiles
 			}
 		}
 		return $out;
-    }
+	}
 
-    private static function format_pages($pub)
-    {
+	private static function format_pages($pub)
+	{
 		$out = "";
 		if (trim($pub["beginpage"]) != "") {
 			$out .= ' <span class="pages">' . trim($pub["beginpage"]);
@@ -1328,10 +1398,10 @@ class StaffProfiles
 			$out .= '</span>';
 		}
 		return $out;
-    }
+	}
 
-    private static function format_issue($pub)
-    {
+	private static function format_issue($pub)
+	{
 		$out = "";
 		if (trim($pub["volume"]) != "") {
 			$out .= ' <span class="volume">' . trim($pub["volume"]) . '</span>';
@@ -1345,27 +1415,27 @@ class StaffProfiles
 			$out .= ': ' . $pages . '.';
 		}
 		return $out;
-    }
+	}
 
-    private static function format_status($pub)
-    {
+	private static function format_status($pub)
+	{
 		$out = "";
 		if (isset($pub["status"]) && $pub["status"] != "Published" && $pub["status"] != "" && strtolower($pub["status"]) != "null") {
 			$out .= ' <span class="publish-status">[' . $pub["status"] . ']</span>';
 		}
 		return $out;
-    }
+	}
 
-    private static function format_extras($pub, $display)
-    {
-    	$out = "";
+	private static function format_extras($pub, $display)
+	{
+		$out = "";
 		if ($display["notes"] && isset($pub["notes"]) && trim($pub["notes"]) != "") {
 			$out .= '<p class="notes">' . trim($pub["notes"]) . '</p>';
 		}
 		if ($display["authorurl"] && isset($pub["authorurl"]) && trim($pub["authorurl"]) != "") {
 			$parsed = parse_url(trim($pub["authorurl"]));
 			if ($parsed !== false && isset($parsed["host"]) && trim($parsed["host"]) != "") {
-			    $out .= '<p class="authorurl"><a href="' . trim($pub["authorurl"]) . '">Author URL [' . trim($parsed["host"]) . ']</a></p>';				
+				$out .= '<p class="authorurl"><a href="' . trim($pub["authorurl"]) . '">Author URL [' . trim($parsed["host"]) . ']</a></p>';				
 			}
 		}
 		if ($display["repositoryurl"] && isset($pub["repositoryurl"]) && trim($pub["repositoryurl"]) != "") {
@@ -1378,17 +1448,17 @@ class StaffProfiles
 			$out .= '<p class="abstract">' . trim($pub["abstract"]) . '</p>';
 		}
 		return $out;
-    }
+	}
 
 	private static function format_date($date, $fromtime = false)
 	{
 		$year = substr($date, 0, 4);
-	    $month = substr($date, 5, 2);
-	    $day = substr($date, 8, 2);
-	    if ($fromtime && (mktime(1, 1, 1, $month, $day, $year) !== false)) {
-	    	return (date("j M. Y", mktime(1, 1, 1, $month, $day, $year)));
-	    }
-	    return $day . "/" . $month . "/" . $year;
+		$month = substr($date, 5, 2);
+		$day = substr($date, 8, 2);
+		if ($fromtime && (mktime(1, 1, 1, $month, $day, $year) !== false)) {
+			return (date("j M. Y", mktime(1, 1, 1, $month, $day, $year)));
+		}
+		return $day . "/" . $month . "/" . $year;
 	}
 
 }
