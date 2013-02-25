@@ -8,199 +8,175 @@
  * @subpackage UoL_theme
  */
 
-get_header(); 
+get_header();
 
-$arrayOfIDs = array();
+/* get top level staff types */
+$staff_types = get_terms(
+	'staff_type',
+	array(
+		'hide_empty' => true,
+		'child_of' => 0
+	)
+);
 
-$filter = isset($_GET['filter']) ? $_GET['filter'] : 'key';
 
-/* make sure we get all staff! */
-global $wp_query;
-$args = array_merge( $wp_query->query, array(
-    'posts_per_page' => -1,
-    'numberposts' => -1,
-    'orderby' => 'menu_order',
-    'order' => 'ASC'
-));
-query_posts($args);
+if (!is_tax()) {
 
-$has_users = array();
-$user_fullnames = array();
-$user_photos = array();
-$userdata = array();
+	/* make sure we get key staff */
+	global $wp_query;
+	$args = array_merge( $wp_query->query, array(
+		'posts_per_page' => -1,
+		'numberposts' => -1,
+		'orderby' => 'menu_order',
+		'order' => 'ASC',
+		'tax_query' => array(
+			array(
+				'taxonomy' => 'staff_type',
+				'field' => 'slug',
+				'terms' => 'key'
+			)
+		)
+	));
+	$current_term = get_term_by('slug', 'key', 'staff_type');
+	query_posts($args);
+} else {
+	$current_term = $wp_query->get_queried_object();
+}
+
+$people = array();
 
 while ( have_posts() ) : the_post();
 	
-	$userID = get_post_meta(get_the_ID(), 'uol_staff_id', true);
+	$staff_id = get_post_meta(get_the_ID(), 'uol_staff_id', true);
     $photo = get_post_meta(get_the_ID(), 'uol_staff_photo_url', true);
 
-	if(!is_numeric($userID))
-    {
-        $user = get_userdatabylogin($userID);
-        $userID = $user->ID;
-    }
-    else
-    {
-        $user = get_userdata($userID);
-    }
-    
-    if(!$userID) {
-        continue;
-    }
-
-    $userdata[$userID] = $user;
-
-    $user_fullnames[$userID] = get_the_title();
-    if ($photo) {
-        $user_photos[$userID] = $photo;
-    }
-
-    $meta = get_metadata('user', $userID);
-    foreach (StaffProfiles::$staff_types as $name => $value) {
-        if (isset($meta['is_' . $value]) && $meta['is_' . $value][0] == 1) {
-            $has_users[$value] = true;
-        }
-    }
-
-    if ($filter != 'all' && (!isset($meta['is_' . $filter]) || $meta['is_' . $filter][0] == 0)) {
-        continue;
-    } 
-    
-    $arrayOfIDs[] = array($userID, get_the_ID());
+	$user = get_user_by('login', $staff_id);
+	if ($user) {
+		global $post;
+		$people[] = array(
+			'user' => $user,
+			'usermeta' => get_user_meta($user->data->ID),
+			'page' => $post
+		);
+	} else {
+		print("no user found with login: " . $user);
+	}
     
 endwhile; // End the loop
 
-wp_reset_query();
-
 // Sort by last name
-function sortByLastName($a, $b) {
-    
-    $aID = $a[0];
-    $bID = $b[0];
-    
-    $a = get_user_meta( $aID, 'last_name', true);    
-    $b = get_user_meta( $bID, 'last_name', true);
-    
-    if($a < $b) {
+function sortByLastName($a, $b)
+{
+    if($a["usermeta"]["last_name"][0] < $b["usermeta"]["last_name"][0]) {
         return -1;
-    } else if ($a > $b) {
+    } else if ($a["usermeta"]["last_name"][0] > $b["usermeta"]["last_name"][0]) {
         return 1;
     }
-    
-    $a = get_user_meta( $aID, 'first_name', true);    
-    $b = get_user_meta( $bID, 'first_name', true);
-    
-    if($a < $b) {
-        return -1;
-    } else if ($a > $b) {
-        return 1;
-    }
-    
     return 0;
+}
+// Sort by menu order
+function sortByMenuOrder($a, $b) {
+	if ($a["page"]->menu_order < $b["page"]->menu_order) {
+		return -1;
+	} else if ($a["page"]->menu_order > $b["page"]->menu_order) {
+		return 1;
+	}
+	return 0;
 }
 
 /* sort by last name unless key staff */
-if ($filter !== 'key') {
-    usort($arrayOfIDs, 'sortByLastName');
+if ($current_term->slug == 'key') {
+	usort($people, 'sortByMenuOrder');
+} else {
+    usort($people, 'sortByLastName');
 }
 
-?>
-    
-    <ul class="tabs">
- <?php /*       <li><a <?php if ($filter=='all'){echo 'class="current"';} ?> href="?filter=all">All Staff</a></li> */ ?>
-        <?php
-            foreach (StaffProfiles::$staff_types as $name => $value) {
-                if (isset($has_users[$value])) {
-            ?>
-                <li><a <?php if ($filter==$value){echo 'class="current"';} ?> href="?filter=<?php echo $value; ?>"><?php echo $name; ?></a></li>
-            <?php
-                }
-            }
-        ?>
-    
-    </ul>
+/* print out top staff type tabs */
+print('<ul class="tabs">');
+foreach ($staff_types as $term) {
+	printf('<li><a href="%s/people/%s">%s</a></li>', get_bloginfo('url'), $term->slug, $term->name);
+}
+print('</ul>');
 
-<?php
-
-if (!count($arrayOfIDs)) {
+if (!count($people)) {
 ?>
     <p>No staff of this type</p>
 <?php
 } else {
 
-    foreach ($arrayOfIDs as $user) {
+    foreach ($people as $person) {
+    	//printf('<pre>%s</pre>', print_r($person, true));
         
-        $userID = $user[0];
-        $postID = $user[1];
-    ?>
-    	<div class="staff-member vcard">
-    	<?php
-            $full = (get_user_meta( $userID, 'bio', true ) || get_user_meta( $userID, 'research_interests', true ));
-            if (isset($user_photos[$userID])) {
-                $photo = $user_photos[$userID];
-            } else {
-        	    $photo = get_user_meta( $userID, 'staff_image_url', true );
-            }
-            if (isset($user_fullnames[$userID]) && trim($user_fullnames[$userID]) != "") {
-                $fullname = $user_fullnames[$userID];
-            } else {
-                $fullname = trim(get_user_meta( $userID, 'title', true ) . " " . get_user_meta( $userID, 'first_name', true) . " " . get_user_meta( $userID, 'last_name', true));
-            }
-            if ($full) {
-                $nameHTML = sprintf('<a class="url" href="%s" title=%s">%s</a>', get_permalink($postID), $fullname, $fullname);
-            } else {
-                $nameHTML = $fullname;
-            }
-    		if ($photo) {
-                if ($full) {
-                    $photoHTML = sprintf('<a class="url" title="%s" href="%s"><img class="staff-image" src="%s" alt="%s" title="%s" /></a>', $fullname, get_permalink($postID), $photo, $fullname, $fullname);
-                } else {
-                    $photoHTML = sprintf('<img class="staff-image" src="%s" alt="%s" title="%s" />', $photo, $fullname, $fullname);
-                }
-            } else {
-                $photoHTML = "";
-            }
-            echo $photoHTML;
-        ?>
-    	    <h3 class="fn n"><?php echo $nameHTML; ?></h3>
-            <p class="position"><?php echo get_user_meta( $userID, 'position', true); ?></p>
-            <p><?php echo get_user_meta( $userID, 'bio_short', true); ?></p>
-            <p class="contact-details">
-                <?php
-                    $email = $userdata[$userID]->user_email;
-                    $telephone = get_user_meta( $userID, 'telephone', true);
-                    $hours = get_user_meta( $userID, 'office_hours', true);
-                    $location = get_user_meta( $userID, 'location', true);
-                    
-                    if ($email) { 
-                        printf('<a class="email" href="mailto:%1$s">%1$s</a>', $email);
-                    }
-                    if ($email && $telephone) {
-                        print(' / ');
-                    }
-                    if ($telephone) {
-                        printf('<span class="tel">%s</span>', $telephone);	
-                    }
-                    if ($email || $telephone) {
-                        print('<br />');
-                    }
-                    if ($location) {
-                        printf('<span class="location">%s</span>', $location);
-                    }
-                    if ($location && $hours) {
-                        print('<br />');
-                    }
-                    if ($hours) {
-                        printf('<span class="hours">Office hours: %s</span>', $hours);
-                    }
-                ?>
-            </p>
-            <?php if ($full) { ?>
-                <p class="read-more"><a href="<?php echo get_permalink($postID); ?>">View Full Profile</a></p>
-            <?php } ?>
-            <div style="clear:both;"></div>
-        </div>
-    <?php
+		print('<div class="staff-member vcard">');
+
+		$full = ((isset($person["usermeta"]['bio']) && trim($person["usermeta"]['bio'][0] != "")) || (isset($person["usermeta"]['research_interests']) && trim($person["usermeta"]['research_interests'][0]) != ""));
+
+		$pageURL = get_permalink($person["page"]->ID);
+
+		if (isset($person["usermeta"]['staff_image_url']) && trim($person["usermeta"]['staff_image_url'][0]) != "") {
+		    $photo = trim($person["usermeta"]['staff_image_url'][0]);
+		} else {
+			$photo = false;
+		}
+
+		$fullname = $person["page"]->post_title;
+
+		if ($full) {
+		    $nameHTML = sprintf('<a class="url" href="%s" title="%s">%s</a>', $pageURL, esc_attr($fullname), $fullname);
+		} else {
+		    $nameHTML = $fullname;
+		}
+		if ($photo) {
+		    if ($full) {
+		        $photoHTML = sprintf('<a class="url" title="%s" href="%s"><img class="staff-image" src="%s" alt="%s" title="%s" /></a>', esc_attr($fullname), $pageURL, $photo, esc_attr($fullname), esc_attr($fullname));
+		    } else {
+		        $photoHTML = sprintf('<img class="staff-image" src="%s" alt="%s" title="%s" />', $photo, esc_attr($fullname), esc_attr($fullname));
+		    }
+		} else {
+		    $photoHTML = "";
+		}
+		print $photoHTML;
+
+		printf('<h3 class="fn n">%s</h3>', $nameHTML);
+		if (isset($person["usermeta"]['position']) && trim($person["usermeta"]['position'][0]) != "") {
+			printf('<p class="position">%s</p>', trim($person["usermeta"]['position'][0]));
+		}
+		if (isset($person["usermeta"]['bio_short']) && trim($person["usermeta"]['bio_short'][0]) != "") {
+			printf('<p></p>', trim($person["usermeta"]['bio_short'][0]));
+		}
+		print('<p class="contact-details">');
+		$email = $person->user->data->user_email;
+		$telephone = (isset($person["usermeta"]['telephone']) && trim($person["usermeta"]['telephone'][0]) != "")? trim($person["usermeta"]['telephone'][0]): '';
+		$hours = (isset($person["usermeta"]['office_hours']) && trim($person["usermeta"]['office_hours'][0]) != "")? trim($person["usermeta"]['office_hours'][0]): '';
+		$location = (isset($person["usermeta"]['location']) && trim($person["usermeta"]['location'][0]) != "")? trim($person["usermeta"]['location'][0]): '';
+		     
+		if ($email) {
+			printf('<a class="email" href="mailto:%1$s">%1$s</a>', $email);
+		}
+		if ($email && $telephone) {
+		    print(' / ');
+		}
+		if ($telephone) {
+		    printf('<span class="tel">%s</span>', $telephone);	
+		}
+		if ($email || $telephone) {
+		    print('<br />');
+		}
+		if ($location) {
+		    printf('<span class="location">%s</span>', $location);
+		}
+		if ($location && $hours) {
+		    print('<br />');
+		}
+		if ($hours) {
+		    printf('<span class="hours">Office hours: %s</span>', $hours);
+		}
+		print('</p>');
+
+		if ($full) {
+			printf('<p class="read-more"><a href="%s">View Full Profile</a></p>', $pageURL);
+        }
+        print('<div style="clear:both;"></div></div>');
     }
 }
 

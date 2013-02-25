@@ -26,21 +26,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 if ( ! class_exists("StaffProfiles") ):
 /**
  * StaffProfiles class
- * Static class used to add new profile fields, hide existing fields,
- * and provide shortcodes for the generation of staff listings
- * @version 0.1
+ * Static class used to:
+ * - add new fields to profiles
+ * - hide some existing fields from profiles
+ * - add a custom post type to display the information
+ * @version 1.1
  * @author Peter Edwards <p.l.edwards@leeds.ac.uk>
  */
 class StaffProfiles
 {
 	/**
-	 * constructor - disallow instantiation
+	 * constructors - disallow instantiation
 	 */
 	final private function StaffProfiles()	{}
-	
-	/**
-	 * constructior (PHP5) 
-	 */
 	final private function __construct() {}
 
 	/**
@@ -48,35 +46,6 @@ class StaffProfiles
 	 */
 	static $version = '1.1';
 	
-	static $staff_types = array(
-		'Key Staff' => 'key',
-		'Academic Staff' => 'academic',
-		'Technical & Support Staff' => 'technical',
-		'Visiting & Emeritus Staff' => 'visitor',
-		'PhD Students' => 'phd',
-		'Graduates' => 'graduates'
-	);
-
-	static $publication_types = array(
-		"Book",
-		"Journal article",
-		"Chapter",
-		"Conference",
-		"Report",
-		"Internet publication",
-		"Performance",
-		"Composition",
-		"Exhibition",
-		"Other",
-		"Artefact",
-		"Design",
-		"Patent",
-		"Software",
-		"Poster",
-		"Scholarly edition",
-		"Thesis / Dissertation"
-	);
-
 	/**
 	 * registers all actions in Wordpress API
 	 */
@@ -114,9 +83,6 @@ class StaffProfiles
 		/* Add People custom post type and staff types taxonomy */
 		add_action( 'init', array('StaffProfiles', 'add_custom_type' ), 181 );
 
-		/* run the upgrade routine */
-		add_action( 'init', array('StaffProfiles', 'upgrade'), 182 );
-
 		/* customise People post type */
 		add_action( 'add_meta_boxes', array('StaffProfiles', 'register_metaboxes' ) );
 		add_action( 'save_post', array('StaffProfiles','save_metaboxes' ));
@@ -125,8 +91,15 @@ class StaffProfiles
 		add_filter( 'single_template', array('StaffProfiles', 'people_template'));
 		add_filter( 'archive_template', array('StaffProfiles', 'people_archive_template'));
 
+		/************************************
+		 * Plugin administration            *
+		 ************************************/
+
 		/* add an admin page */
 		add_action('admin_menu', array('StaffProfiles', 'add_admin_page'));
+
+		/* run the upgrade routine */
+		add_action( 'init', array('StaffProfiles', 'upgrade'), 182 );
 	}
 	
 	/**
@@ -608,14 +581,51 @@ class StaffProfiles
 		);
 		return array_merge($profile_fields, $temp_array);
 	}
+
 	/**
-	 * staff list shortcode callback function
-	 * @param array attributes of shortcode arguments
-	 * @return string HTML
+	 * adds a custom post type for people
 	 */
-	public static function staff_list_shortcode( $atts = false )
+	public static function add_custom_type()
 	{
-	
+		/* Add new hierarchical taxonomy (like categories) */
+		$category_labels = array(
+			'name' => 'Staff types',
+			'singular_name' => 'Staff types',
+			'search_items' => 'Search Staff types',
+			'all_items' => 'All Staff types',
+			'parent_item' => 'Parent Staff type',
+			'parent_item_colon' => 'Parent Staff type:',
+			'edit_item' => 'Edit Staff type', 
+			'update_item' => 'Update Staff type',
+			'add_new_item' => 'Add New Staff type',
+			'new_item_name' => 'New Staff type',
+			'menu_name' => 'Staff types'
+		);  
+		register_taxonomy('staff_type', array('people'), array(
+			'hierarchical' => true,
+			'labels' => $category_labels,
+			'show_ui' => true,
+			'query_var' => true,
+			'rewrite' => array( 
+				'slug' => 'people',
+				'with_front' => false,
+				'hierarchical' => true
+			)
+		));
+	    register_post_type( 'people',
+			array(
+				'labels' => array(
+					'name' => __( 'People' ),
+					'singular_name' => __( 'People' )
+				),
+				'public' => true,
+				'has_archive' => true,
+				'hierarchical' => true,
+				'menu_position' => 20,
+				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
+				'supports' => array('title','editor','excerpt')
+			)
+		);
 	}
 
 	/**
@@ -655,7 +665,7 @@ class StaffProfiles
 		}
 
 		/* get staff types */
-		$staff_types = get_terms('staff_type');
+		$staff_types = get_terms('staff_type', array('hide_empty' => false) );
 
 		/* process POST */
 		if (isset($_POST['update-staff-profiles']))	{
@@ -710,9 +720,9 @@ class StaffProfiles
 		foreach ($users as $user) :
 			$userID = $user->data->ID;
 			if (!isset($pages_map[$user->data->user_login])) {
-				$page_link = sprintf('<a href="%s?post_type=people&amp;user_login=%d" title="Add page for %s" class="button-primary">Add page</a>', admin_url('post-new.php'), $user->data->user_login, $user->data->display_name);
+				$page_link = sprintf('<a href="%s?post_type=people&amp;user_login=%s&amp;display_name=%s" title="Add page for %s" class="button-primary">Add page</a>', admin_url('post-new.php'), $user->data->user_login, urlencode($user->data->display_name), esc_attr($user->data->display_name));
 			} else {
-				$page_link = sprintf('<a href="%s?action=edit&amp;post=%d" title="Edit page for %s" class="button-secondary">Edit page</a>', admin_url('post.php'), $pages_map[$user->data->user_login], $user->data->display_name);
+				$page_link = sprintf('<a href="%s?action=edit&amp;post=%d" title="Edit page for %s" class="button-secondary">Edit page</a>', admin_url('post.php'), $pages_map[$user->data->user_login], esc_attr($user->data->display_name));
 			}
 		?>
 				<tr>
@@ -736,51 +746,10 @@ class StaffProfiles
 		print('</tbody></table>');
 		print('</form></div>');
 	}
-	
-	
-	public static function add_custom_type()
-	{
-	   register_post_type( 'people',
-			array(
-				'labels' => array(
-					'name' => __( 'People' ),
-					'singular_name' => __( 'People' )
-				),
-				'public' => true,
-				'has_archive' => true,
-				'hierarchical' => true,
-				'menu_position' => 20,
-				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
-				'supports' => array('title','editor','excerpt')
-			)
-		);
-		/* Add new hierarchical taxonomy (like categories) */
-		$category_labels = array(
-			'name' => 'Staff types',
-			'singular_name' => 'Staff types',
-			'search_items' => 'Search Staff types',
-			'all_items' => 'All Staff types',
-			'parent_item' => 'Parent Staff type',
-			'parent_item_colon' => 'Parent Staff type:',
-			'edit_item' => 'Edit Staff type', 
-			'update_item' => 'Update Staff type',
-			'add_new_item' => 'Add New Staff type',
-			'new_item_name' => 'New Staff type',
-			'menu_name' => 'Staff types'
-		);  
-		register_taxonomy('staff_type', array('people'), array(
-			'hierarchical' => true,
-			'labels' => $category_labels,
-			'show_ui' => true,
-			'query_var' => true,
-			'rewrite' => array( 
-				'slug' => 'people',
-				'with_front' => false,
-				'hierarchical' => false
-			)
-		));
-	}
 
+	/**
+	 * upgrade method, called in the init action hook after the post type is registered
+	 */
 	public static function upgrade()
 	{
 		$current_version = get_option("staffprofiles_version");
@@ -791,6 +760,14 @@ class StaffProfiles
 					 * v1.0 of this plugin had no version added
 					 * v1.1 moved staff types to a custom taxonomy
 					 */
+					$previous_staff_types = array(
+						'Key Staff' => 'key',
+						'Academic Staff' => 'academic',
+						'Technical & Support Staff' => 'technical',
+						'Visiting & Emeritus Staff' => 'visitor',
+						'PhD Students' => 'phd',
+						'Graduates' => 'graduates'
+					);
 
 					/* get people pages */
 					$people_pages = get_posts(array(
@@ -812,7 +789,7 @@ class StaffProfiles
 
 					/* add terms to custom taxonomy */
 					$terms = array();
-					foreach (self::$staff_types as $key => $value) {
+					foreach ($previous_staff_types as $key => $value) {
 						/**
 						 * inserts terms into the staff_type taxonomy
 						 * return values are stored in the terms array for later use:
@@ -841,7 +818,7 @@ class StaffProfiles
 					/* get terms from staff profiles and add categories to people pages */
 					foreach ($users as $user) {
 						$user_terms = array();
-						foreach (self::$staff_types as $key => $value) {
+						foreach ($previous_staff_types as $key => $value) {
 							if (get_user_meta( $user->data->ID, 'is_' . $value, true)) {
 								//print('<p>found type ' . $value . ' for user ' . $user->data->user_login . ' [ID:' . $user->data->ID . '] in profile.</p>');
 								$user_terms[] = $terms[$value]['term_id'];
@@ -966,11 +943,11 @@ class StaffProfiles
 	{
 		global $wp_query, $post;
 		if ($post->post_type == "people") {
+			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
 			$path = dirname(__FILE__).'/single-people.php';
 			if (file_exists($path)) {
 				return $path;
 			}
-			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
 		}
 		return $single;
 	}
@@ -982,11 +959,11 @@ class StaffProfiles
 	{
 		global $wp_query, $post;
 		if ($post->post_type == "people") {
+			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
 			$path = dirname(__FILE__).'/archive-people.php';
 			if (file_exists($path)) {
 				return $path;
 			}
-			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
 		}
 		return $archive;
 	}
@@ -1000,6 +977,30 @@ class StaffProfiles
 		wp_enqueue_style('staff-profiles-css', plugins_url('/css/people.min.css', __FILE__));
 	}
    
+	/**
+	 * Staff Publications
+	 */		
+
+	static $publication_types = array(
+		"Book",
+		"Journal article",
+		"Chapter",
+		"Conference",
+		"Report",
+		"Internet publication",
+		"Performance",
+		"Composition",
+		"Exhibition",
+		"Other",
+		"Artefact",
+		"Design",
+		"Patent",
+		"Software",
+		"Poster",
+		"Scholarly edition",
+		"Thesis / Dissertation"
+	);
+
 	/**
 	 * filters publication type sort order
 	 * default set as site option, but can be overridden by user option
@@ -1024,7 +1025,8 @@ class StaffProfiles
 	}
 
 	/**
-	 * Staff Publications
+	 * get publications
+	 * function which can be used as a static method - originally developed as a shortcode
 	 *		
 	 *	Possible $attrs
 	 *	===============
@@ -1157,6 +1159,11 @@ class StaffProfiles
 		}
 		return $output;
 	}
+
+	/**
+	 * publication formatting methods
+	 * one method for each p[ublication type, with some helpers for common fields
+	 */
 	private static function format_publication($pub, $display)
 	{
 		$out = '<li class="publication">';

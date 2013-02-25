@@ -1,0 +1,172 @@
+.accordion {
+  clear: both;
+  margin-top: 1em;
+}
+.accordion h3 {
+  /*background:#353431;
+	color:white !important;*/
+
+  color: #353431;
+  background: #fff;
+  border-bottom: 1px solid #999;
+  margin: 1px 0 0 !important;
+  /*padding:5px 10px;*/
+
+  padding: 6px 10px 6px 30px;
+  position: relative;
+  -webkit-transition: background 0.25s ease-in-out;
+  -moz-transition: background 0.25s ease-in-out;
+  -o-transition: background 0.25s ease-in-out;
+  transition: background 0.25s ease-in-out;
+}
+.accordion h3:hover {
+  /*background:#555;*/
+
+  border-bottom: 1px solid #353431;
+}
+.accordion h3:hover span.arrow {
+  border-color: #353431;
+  color: #353431;
+}
+.accordion h3 span.arrow {
+  position: absolute;
+  /*right:10px;*/
+
+  left: 4px;
+  top: 4px;
+  display: block;
+  color: #999;
+  border: 1px solid #999;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  padding: 1px;
+}
+.accordion h4 {
+  font-weight: bold;
+}
+.accordion div {
+  border-bottom: 1px solid black;
+  padding: 10px;
+}
+.staff-image {
+  border: 1px solid black;
+  float: right;
+  margin: 0 0 10px 10px;
+  max-height: 200px;
+}
+.staff-box h2 {
+  float: none;
+}
+/* Staff Page */
+body.post-type-archive-people .staff-member,
+body.tax-staff_type .staff-member {
+  background: #f9f6e6;
+  border: 1px solid #5C5B56;
+  margin-top: 18px;
+  padding: 0 10px;
+}
+body.post-type-archive-people .staff-member .staff-image,
+body.tax-staff_type .staff-member .staff-image {
+  margin: 10px 0 10px 10px;
+  max-width: 200px;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+}
+body.post-type-archive-people .staff-member h3,
+body.tax-staff_type .staff-member h3 {
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0;
+}
+body.post-type-archive-people .staff-member .position,
+body.tax-staff_type .staff-member .position {
+  font-style: italic;
+  font-family: Georgia, Helvetica, Arial, sans-serif;
+  font-size: 1.2em;
+  margin-top: 3px;
+}
+body.post-type-archive-people .tabs,
+body.tax-staff_type .tabs {
+  margin-left: 0;
+  padding: 0 0 7px 0;
+  line-height: normal;
+  border-bottom: 1px solid #999;
+}
+body.post-type-archive-people .tabs li,
+body.tax-staff_type .tabs li {
+  display: inline;
+}
+body.post-type-archive-people .tabs li a,
+body.tax-staff_type .tabs li a {
+  font-size: 0.8em;
+  background: #f9f6e6;
+  -webkit-border-top-left-radius: 5px;
+  -webkit-border-top-right-radius: 5px;
+  -moz-border-top-left-radius: 5px;
+  -moz-border-top-right-radius: 5px;
+  -o-border-top-left-radius: 5px;
+  -o-border-top-right-radius: 5px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  border: 1px solid #999;
+  color: #5C5B56;
+  padding: 7px 8px;
+}
+body.post-type-archive-people .tabs li a.current,
+body.tax-staff_type .tabs li a.current {
+  position: relative;
+  top: 0px;
+  background: #FFF;
+  border-color: #5C5B56;
+  border-top: 3px solid #e39658;
+  border-bottom: 1px solid #FFF;
+  padding-top: 5px;
+}
+body.post-type-archive-people .tabs li a:hover,
+body.tax-staff_type .tabs li a:hover {
+  color: #e39658;
+}
+/* publications pages */
+ul.publications li {
+  list-style: none;
+  background: none;
+  padding-left: 0;
+  margin: 1em 0;
+}
+ul.publications li p {
+  margin: 0.5em 0;
+}
+.publication .authors {
+  color: #666;
+  font-weight: bold;
+}
+.publication .title {
+  color: #333;
+  font-style: italic;
+}
+.publication .title-with-parent {
+  color: #333;
+  font-style: normal;
+}
+.publication .parent-title,
+.publication .journal {
+  color: #333;
+  font-style: italic;
+}
+.publication .volume {
+  font-weight: bold;
+}
+.publication .issue {
+  color: #666;
+}
+.publication .startdate,
+.publication .finishdate {
+  color: #666;
+  font-style: italic;
+}
+.publication .publish-status {
+  color: #966;
+  font-style: italic;
+}

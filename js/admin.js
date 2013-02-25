@@ -1,9 +1,8 @@
-/**
- * Admin.js
+/*!
+ * staff-profiles plugin
  * scripts for plugin admin pages
  */
-
-jQuery(function ($)
+;(function($)
 {
 	/* only do following on the wp-admin profile page - overwise it hides certain tables on other pages */
 	if ($('body.wp-admin.profile-php').length) {
@@ -75,5 +74,24 @@ jQuery(function ($)
             }
         }
     });
+    var login = getQueryVariable('user_login'),
+        display_name = getQueryVariable('display_name');
+    if (login && display_name) {
+    	window.setTimeout(function(){
+			$('#title').focus().val(decodeURIComponent(display_name));
+			$('#uol_staff_id').val(login);
+    	}, 100);
+    }
+    function getQueryVariable(variable) {
+    	var query = window.location.search.substring(1);
+    	var vars = query.split('&');
+    	for (var i=0; i<vars.length; i++) {
+        	var pair = vars[i].split('=');
+        	if (pair[0] == variable) {
+            	return pair[1];
+        	}
+    	}
+    	return false;
+	};
     
-});
+})(jQuery);

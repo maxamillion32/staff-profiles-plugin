@@ -195,7 +195,7 @@ get_header();
 			endif;
 			
 			/* display publications if set */
-			if(get_user_meta( $id, 'publications', true )):
+			if ( get_user_meta( $id, 'publications', true ) && class_exists('StaffProfiles') ):
 			
 				$publications = get_user_meta( $id, 'publications', true );
 				
@@ -217,19 +217,16 @@ get_header();
 	            /* set order of publication types */
 	            $types_filter = StaffProfiles::getPublicationTypesFilter($id);
 
-				/* checks plugin exists then calls the shorcode function directly */
-				if (class_exists('StaffProfiles')) :
+				$publications = StaffProfiles::get_publications( array(
+					'id' => $publications,
+					'header_level'=>'h4',
+					'status' => $status_filter,
+					'types' => $types_filter,
+					'display' => $display_filters
+				) );
 
-					$publications = StaffProfiles::get_publications( array(
-						'id' => $publications,
-						'header_level'=>'h4',
-						'status' => $status_filter,
-						'types' => $types_filter,
-						'display' => $display_filters
-					) );
-
-					if ($publications != "") :
-					?>
+				if ($publications != "") :
+				?>
 		
 		<h3>Publications</h3>
 		<div>
@@ -237,7 +234,6 @@ get_header();
 		</div>
 		
 		<?php
-					endif;
 				endif;
 			endif;
 			
@@ -245,7 +241,7 @@ get_header();
 			if(get_user_meta( $id, 'research_projects', true )):
 		?>
 		
-		<h3>Research Projects & Grants</h3>
+		<h3>Research Projects &amp; Grants</h3>
 		<div>
 		<?php echo apply_filters( "the_content", get_user_meta( $id, 'research_projects', true ) ); ?>
 		</div>
@@ -257,7 +253,7 @@ get_header();
 			if(get_user_meta( $id, 'research_groups', true )):
 		?>
 		
-		<h3>Research Centres & Groups</h3>
+		<h3>Research Centres &amp; Groups</h3>
 		<div>
 		<?php echo apply_filters( "the_content", get_user_meta( $id, 'research_groups', true ) ); ?>
 		</div>
