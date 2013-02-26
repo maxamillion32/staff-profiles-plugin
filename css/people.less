@@ -73,9 +73,25 @@
 }
 
 /* Staff Page */
+body.single-people {
+	.section-sidebar {
+		display:none;
+	}
+	.content-main {
+		width:700px;
+	}
+}
 body.post-type-archive-people,
 body.tax-staff_type {
-
+	.site-sidebar, .section-sidebar {
+		display:none;
+	}
+	.content-main, .nav-main {
+		width:100%;
+	}
+    .content .site-search {
+    	display:block;
+    }
 	.staff-member {
 		background:#f9f6e6;
 		border:1px solid #5C5B56;
@@ -124,6 +140,7 @@ body.tax-staff_type {
 			    border:1px solid #999;
 			    color:#5C5B56;
 			    padding:7px 8px;
+			    margin-right:4px;
 			
 				&.current {
 					position: relative;

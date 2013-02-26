@@ -107,7 +107,7 @@ class StaffProfiles
 	 */
  	public static function add_admin_scripts()
  	{   
-		wp_enqueue_script('staff-profiles-admin-js', plugins_url('/js/admin.min.js', __FILE__), array('jquery'));
+		wp_enqueue_script('staff-profiles-admin-js', plugins_url('/js/admin.min.js', __FILE__), array('jquery'), self::$version, true);
 		//wp_enqueue_style('staff-profiles-admin-css', plugins_url('/css/admin.min.css', __FILE__), array('jquery-ui'));
 	}
 
@@ -308,14 +308,26 @@ class StaffProfiles
 		return sprintf('<tr><th><label for="%s">%s</label></th><td>%s<p>%s</p><p><input type="checkbox" name="%s_delete" /> Check this box to revert to the default site order.</p></td></tr>', $field_name, $field_label, self::sortable_list($field_name, $fields), $field_description, $field_name);
 	}
 
+	/**
+	 * returns a sortable HTML unordered list
+	 */
 	public static function sortable_list($field_name, $fields)
 	{
 		wp_enqueue_script('jquery-ui-sortable');
 		$out = sprintf('<ul id="%s_sortable">', $field_name);
-		foreach ($fields as $f) {
-			$out .= sprintf('<li>%s</li>', $f);
+		if ( ! count(array_filter(array_keys($fields), 'is_string'))) {
+			/* fields is not associative */
+			foreach ($fields as $f) {
+				$out .= sprintf('<li data-value="%s">%s</li>', esc_attr($f), $f);
+			}
+			$start_value = implode(",", $fields);
+		} else {
+			foreach ($fields as $k => $v) {
+				$out .= sprintf('<li data-value="%s">%s</li>', esc_attr($k), $v);
+			}
+			$start_value = implode(",", array_keys($fields));
 		}
-		$out .= sprintf('</ul><input type="hidden" id="%s" name="%s" value="%s" />', $field_name, $field_name, implode(",", $fields));
+		$out .= sprintf('</ul><input type="hidden" id="%s" name="%s" value="%s" />', $field_name, $field_name, $start_value);
 		$out .= '<script type="text/javascript">';
 		$out .= "\njQuery(function($){\n";
 		$out .= "	$('#" . $field_name . "_sortable li').css({border:'1px solid #ccc',background:'#efefef',margin:'1px 0',padding:'3px',display:'block',width:'300px',cursor:'move'});\n";
@@ -323,7 +335,7 @@ class StaffProfiles
 		$out .= "		update:function(event,ui){\n";
 		$out .= "			var fields = [];\n";
 		$out .= "			$('#" . $field_name . "_sortable li').each(function(){\n";
-		$out .= "				fields.push($(this).text());\n";
+		$out .= "				fields.push($(this).attr('data-value'));\n";
 		$out .= "			});\n";
 		$out .= "			$('#" . $field_name . "').val(fields.join(','));\n";
 		$out .= "		}\n";
@@ -408,56 +420,48 @@ class StaffProfiles
 				"description" => "Please enter your office phone number in the form 0113 123 4567",
 				"type" => "text"
 			),
-			
 			array(
 				"name" => "twitter",
 				"label" => "Twitter",
 				"description" => "Enter your twitter username here",
 				"type" => "text"
 			),
-
 			array(
 				"name" => "location",
 				"label" => "Location",
 				"description" => "Please enter your office building and room number (e.g. Clothworkers' Building South, Room 1.02)",
 				"type" => "text"
 			),
-
 			array(
 				"name" => "office_hours",
 				"label" => "Office Hours",
 				"description" => "Please enter your regular office hours (e.g. Monday - Thursday, 1.00pm. - 4.00pm.)",
 				"type" => "text"
 			),
-		
 			array(
-					"name" => "position",
-					"label" => "Position",
-					"description" => "Please enter your formal job title(s) e.g. Senior Lecturer in International Communications",
-					"type" => "text"
+				"name" => "position",
+				"label" => "Position",
+				"description" => "Please enter your formal job title(s) e.g. Senior Lecturer in International Communications",
+				"type" => "text"
 			),
-			
 			array(
-					"name" => "qualification",
-					"label" => "Qualifications",
-					"description" => "Please enter your academic qualifications",
-					"type" => "text"
+				"name" => "qualification",
+				"label" => "Qualifications",
+				"description" => "Please enter your academic qualifications",
+				"type" => "text"
 			),
-			
 			array(
-					"name" => "bio_short",
-					"label" => "Biography Summary",
-					"description" => "Please enter a very brief summary of your role including areas of expertise and research interests. Max. 30 words",
-					"type" => "richtext"
+				"name" => "bio_short",
+				"label" => "Biography Summary",
+				"description" => "Please enter a very brief summary of your role including areas of expertise and research interests. Max. 30 words",
+				"type" => "richtext"
 			),
-			
 			array(
-					"name" => "bio",
-					"label" => "Biographical Info",
-					"description" => "Please enter a longer biography (150 - 250 words)",
-					"type" => "richtext"
+				"name" => "bio",
+				"label" => "Biographical Info",
+				"description" => "Please enter a longer biography (150 - 250 words)",
+				"type" => "richtext"
 			),
-			
 			array(
 				"name" => "research_interests",
 				"label" => "Research Interests",
@@ -587,31 +591,6 @@ class StaffProfiles
 	 */
 	public static function add_custom_type()
 	{
-		/* Add new hierarchical taxonomy (like categories) */
-		$category_labels = array(
-			'name' => 'Staff types',
-			'singular_name' => 'Staff types',
-			'search_items' => 'Search Staff types',
-			'all_items' => 'All Staff types',
-			'parent_item' => 'Parent Staff type',
-			'parent_item_colon' => 'Parent Staff type:',
-			'edit_item' => 'Edit Staff type', 
-			'update_item' => 'Update Staff type',
-			'add_new_item' => 'Add New Staff type',
-			'new_item_name' => 'New Staff type',
-			'menu_name' => 'Staff types'
-		);  
-		register_taxonomy('staff_type', array('people'), array(
-			'hierarchical' => true,
-			'labels' => $category_labels,
-			'show_ui' => true,
-			'query_var' => true,
-			'rewrite' => array( 
-				'slug' => 'people',
-				'with_front' => false,
-				'hierarchical' => true
-			)
-		));
 	    register_post_type( 'people',
 			array(
 				'labels' => array(
@@ -626,14 +605,51 @@ class StaffProfiles
 				'supports' => array('title','editor','excerpt')
 			)
 		);
+		/* Add new hierarchical taxonomy (like categories) */
+		register_taxonomy('staff_type', array('people'), array(
+			'hierarchical' => true,
+			'labels' => array(
+				'name' => 'Staff types',
+				'singular_name' => 'Staff types',
+				'search_items' => 'Search Staff types',
+				'all_items' => 'All Staff types',
+				'parent_item' => 'Parent Staff type',
+				'parent_item_colon' => 'Parent Staff type:',
+				'edit_item' => 'Edit Staff type', 
+				'update_item' => 'Update Staff type',
+				'add_new_item' => 'Add New Staff type',
+				'new_item_name' => 'New Staff type',
+				'menu_name' => 'Staff types'
+			),
+			'show_ui' => true,
+			'query_var' => true,
+			'rewrite' => false
+		));
+		/* do the rewrites for the taxonomy independently of Wordpress */
+		add_filter( 'generate_rewrite_rules', array('StaffProfiles', 'taxonomy_slug_rewrite') );
 	}
+
+	/**
+	 * adds rewrite rules for staff type taxonomy
+	 * appends the taxonomy slug to the people post type slug
+	 */
+	function taxonomy_slug_rewrite($wp_rewrite) 
+	{
+		$rules = array();
+		$staff_types = self::get_staff_types(false);
+		foreach ($staff_types as $term) {
+			$rules['people/' . $term->slug . '/?$'] = 'index.php?staff_type=' . $term->slug;
+		}
+		$wp_rewrite->rules = $rules + $wp_rewrite->rules;
+	}
+
 
 	/**
 	 * adds a menu item to People
 	 */
 	public static function add_admin_page()
 	{
-		add_submenu_page('edit.php?post_type=people', 'People admin', 'People admin', 'list_users', 'staff-profiles', array('StaffProfiles', 'admin_page') );
+		add_submenu_page('edit.php?post_type=people', 'People admin', 'People admin', 'list_users', 'people-admin', array('StaffProfiles', 'admin_page') );
 	}
 	
 	/**
@@ -641,7 +657,7 @@ class StaffProfiles
 	 */
 	public static function admin_page()
 	{
-		if (!current_user_can('administrator')) 
+		if (!current_user_can('list_users')) 
 		{
 			wp_die('You do not have sufficient permissions to access this page.');
 		}
@@ -664,17 +680,23 @@ class StaffProfiles
 			}
 		}
 
-		/* get staff types */
-		$staff_types = get_terms('staff_type', array('hide_empty' => false) );
-
 		/* process POST */
-		if (isset($_POST['update-staff-profiles']))	{
+		if (isset($_POST['update-order']))	{
+
 			/* update publication type sort order */
 		   	update_option("pubtypes_sortorder", $_POST['pubtypes_sortorder']);
 		   	
 		   	/* update staff type sort order */
-		   	//update_option("stafftypes_sortorder", $_POST['stafftypes_sortorder']);
-			
+		   	update_option("stafftypes_sortorder", $_POST['stafftypes_sortorder']);
+
+		   	/* get staff types AFTER sort option has been updated */
+		   	$staff_types = self::get_staff_types();
+
+		} elseif (isset($_POST['update-list'])) {	
+		
+		   	/* get staff types */
+		   	$staff_types = self::get_staff_types();
+
 		   	/* update symplectic ID and staff types */
 			foreach ($users as $user) {
 
@@ -686,65 +708,160 @@ class StaffProfiles
 						$user_terms[] = $term->term_id;
 					}
 				}
+                $user_terms = array_map('intval', $user_terms);
+				$user_terms = array_unique( $user_terms );
 				if (count($user_terms) && isset($pages_map[$user->data->user_login])) {
-					wp_set_object_terms($pages_map[$user->data->user_login], $user_terms, 'staff_type');
+					wp_set_post_terms($pages_map[$user->data->user_login], $user_terms, 'staff_type', false);
+				}
+			}
+		} else {
+
+			/* get staff types for later processing */
+			$staff_types = self::get_staff_types();
+		}
+
+		print('<div class="wrap" id="profile-page"><div id="icon-users" class="icon32"><br></div>');
+
+		/* tabs */
+		$tabs = array( 'list' => 'Staff Pages', 'order' => 'Sort Order' );
+		$current = ( isset($_GET['tab']) && in_array($_GET['tab'], array_keys($tabs)) )? $_GET['tab']: 'list';
+
+		$submit_button = sprintf('<p class="submit"><input type="submit" name="update-%s" class="button-primary" value="Update"></p>', $current);
+
+		/* output the tabs */
+	    print('<h2 class="nav-tab-wrapper">');
+    	foreach( $tabs as $tab => $name ){
+        	$class = ( $tab === $current ) ? ' nav-tab-active' : '';
+       		printf('<a class="nav-tab%s" href="%s">%s</a>', $class, admin_url('edit.php?post_type=people&amp;page=people-admin&amp;tab=' . $tab), $name);
+		}
+    	print('</h2>');
+
+    	/* output the form */
+		printf('<form id="people-admin" action="%s" method="post">', admin_url('edit.php?post_type=people&amp;page=people-admin&amp;tab=' . $current));
+
+		if ($current === "list") {
+
+			echo $submit_button;
+
+	        print('<table class="staff-profiles widefat">');
+			$headers = '<tr><th>Staff Name</th><th>Page</th><th>Symplectic ID</th>';
+			foreach ($staff_types as $term) {
+				$headers .= sprintf('<th>%s</th>', $term->name);
+			}
+			$headers .= '</tr>';
+			printf('<thead>%s</thead><tfoot>%s</tfoot>', $headers, $headers);
+			
+			foreach ($users as $user) :
+				$userID = $user->data->ID;
+				if (!isset($pages_map[$user->data->user_login])) {
+					$page_link = sprintf('<a href="%s?post_type=people&amp;user_login=%s&amp;display_name=%s" title="Add page for %s" class="button-primary">Add page</a>', admin_url('post-new.php'), $user->data->user_login, htmlspecialchars(rawurlencode($user->data->display_name)), esc_attr($user->data->display_name));
+				} else {
+					$page_link = sprintf('<a href="%s?action=edit&amp;post=%d" title="Edit page for %s" class="button-secondary">Edit page</a>', admin_url('post.php'), $pages_map[$user->data->user_login], esc_attr($user->data->display_name));
+				}
+				print('<tr class="person-row">');
+				printf('<td><a href="%s" title="click to edit user profile">%s</a></td>', admin_url( 'user-edit.php?user_id=' . $userID), $user->data->display_name);
+				printf('<td>%s</td>', $page_link);
+				printf('<td><input name="symplectic-%s" type="text" value="%s" /></td>', $userID, get_user_meta( $userID, 'publications', true));
+				foreach ($staff_types as $term) {
+					if (!isset($pages_map[$user->data->user_login])) {
+						$attr = ' disabled="disabled"';
+					} else {
+						$attr = has_term($term->term_id, 'staff_type', $pages_map[$user->data->user_login])? ' checked="checked"': '';
+					}
+					printf('<td class="term-cell"><input name="is_%s-%d" class="user-term" type="checkbox"%s /></td>', $term->slug, $userID, $attr);
+				}
+				print('</tr>');
+			endforeach;
+
+			print('</tbody></table>');
+
+			echo $submit_button;
+		}
+
+		if ($current === "order") {
+
+			/* staff types sort order */
+			print('<h2>Staff types sort order</h2><p>Set the default sort order for the site by dragging and dropping the different staff types in this list:</p>');
+
+			$default_order = array();
+			foreach ($staff_types as $term) {
+				$default_order[$term->slug] = $term->name;
+			}
+
+			echo self::sortable_list("stafftypes_sortorder", $default_order);
+
+			echo $submit_button;
+
+			/* publication types sort order */
+			print('<h2>Publications sort order</h2><p>Set the default sort order for the site by dragging and dropping the different publication types in this list:</p>');
+
+			$defaults = get_option("pubtypes_sortorder");
+
+			if (!$defaults) {
+				$default_order = self::$publication_types;
+			} else {
+				$default_order = explode(",", $defaults);
+			}
+			echo self::sortable_list("pubtypes_sortorder", $default_order);
+
+			echo $submit_button;
+
+		}
+
+		print('</form></div>');
+	}
+
+	/**
+	 * gets staff types (in the correct order)
+	 * currently gets the top level categories ONLY
+	 * would need to add in rewrites to display nested categories
+	 */
+	public static function get_staff_types($include_empty = true)
+	{
+		$staff_types = get_terms('staff_type', array('hide_empty' => false, 'parent' => 0) );
+		$sortorder = get_option('stafftypes_sortorder');
+		/* whether to save the sortorder */
+		$save_sortorder = false;
+		/* array to place sorted terms in */
+		$sorted_types = array();
+		if ( ! $sortorder ) {
+			/* default sort order */
+			$sorted_slugs = array('key', 'academic', 'technical', 'visitor', 'phd', 'graduates');
+			$save_sortorder = true;
+		} else {
+			/* get the sortorder */
+			$sorted_slugs = explode(",", $sortorder);
+		}
+		/* keep track of all names */
+		$all_slugs = array();
+		/* make sure each name is in the sort list */
+		foreach ($staff_types as $term) {
+			if ( ! in_array($term->slug, $sorted_slugs) ) {
+				$sorted_slugs[] = $term->slug;
+				$save_sortorder = true;
+			}
+			$all_slugs[] = $term->slug;
+		}
+		/* remove any anomalous names */
+		$sorted_slugs = array_intersect($sorted_slugs, $all_slugs);
+		/* put the terms in order */
+		foreach ($sorted_slugs as $type_slug) {
+			foreach ($staff_types as $term) {
+				if ($term->slug == $type_slug) {
+					if ($include_empty) {
+						$sorted_types[] = $term;
+					} else {
+						if ( intval($term->count) > 0 ) {
+							$sorted_types[] = $term;
+						}
+					}
 				}
 			}
 		}
-		$submit_button = '<p class="submit"><input type="submit" name="update" id="submit" class="button-primary" value="Update"></p>';
-
-		print('<div class="wrap" id="profile-page"><div id="icon-users" class="icon32"><br></div><h2>Staff Profiles</h2>');
-		print('<form id="your-profile" action="?page=staff-profiles" method="post">');
-
-		/* publication stypes sort order */
-		print('<h2>Publications sort order</h2><p>Set the default sort order for the site by dragging and dropping the different publication type in this list:</p>');
-
-		$defaults = get_option("pubtypes_sortorder");
-
-		if (!$defaults) {
-			$default_order = self::$publication_types;
-		} else {
-			$default_order = explode(",", $defaults);
+		if ($save_sortorder) {
+			update_option('stafftypes_sortorder', implode(",", $sorted_slugs));
 		}
-		echo self::sortable_list("pubtypes_sortorder", $default_order);
-
-		print('<h2>Staff Pages</h2>');
-        print('<table class="staff-profiles widefat">');
-		$headers = '<tr><th>Staff Name</th><th>Page</th><th>Symplectic ID</th>';
-		foreach ($staff_types as $term) {
-			$headers .= sprintf('<th>%s</th>', $term->name);
-		}
-		$headers .= '</tr>';
-		printf('<thead>%s</thead><tfoot>%s</tfoot>', $headers, $headers);
-		
-		foreach ($users as $user) :
-			$userID = $user->data->ID;
-			if (!isset($pages_map[$user->data->user_login])) {
-				$page_link = sprintf('<a href="%s?post_type=people&amp;user_login=%s&amp;display_name=%s" title="Add page for %s" class="button-primary">Add page</a>', admin_url('post-new.php'), $user->data->user_login, urlencode($user->data->display_name), esc_attr($user->data->display_name));
-			} else {
-				$page_link = sprintf('<a href="%s?action=edit&amp;post=%d" title="Edit page for %s" class="button-secondary">Edit page</a>', admin_url('post.php'), $pages_map[$user->data->user_login], esc_attr($user->data->display_name));
-			}
-		?>
-				<tr>
-					<td><?php echo $user->data->display_name; ?></td>
-					<td><?php echo $page_link; ?></td>
-					<td><input name="symplectic-<?php echo $userID; ?>" type="text" value="<?php echo get_user_meta( $userID, 'publications', true); ?>" /></td>
-					<?php
-					foreach ($staff_types as $term) {
-						if (!isset($pages_map[$user->data->user_login])) {
-							$attr = ' disabled="disabled"';
-						} else {
-							$attr = has_term($term->term_id, 'staff_type', $pages_map[$user->data->user_login])? ' checked="checked"': '';
-						}
-						printf('<td><input name="is_%s-%d" type="checkbox"%s /></td>', $term->slug, $userID, $attr);
-					}  
-					?>
-				</tr>
-		<?php
-		endforeach;
-
-		print('</tbody></table>');
-		print('</form></div>');
+		return $sorted_types;
 	}
 
 	/**
@@ -944,7 +1061,7 @@ class StaffProfiles
 		global $wp_query, $post;
 		if ($post->post_type == "people") {
 			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
-			$path = dirname(__FILE__).'/single-people.php';
+			$path = dirname(__FILE__) . '/single-people.php';
 			if (file_exists($path)) {
 				return $path;
 			}

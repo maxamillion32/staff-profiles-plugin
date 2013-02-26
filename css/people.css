@@ -59,6 +59,28 @@
   float: none;
 }
 /* Staff Page */
+body.single-people .section-sidebar {
+  display: none;
+}
+body.single-people .content-main {
+  width: 700px;
+}
+body.post-type-archive-people .site-sidebar,
+body.tax-staff_type .site-sidebar,
+body.post-type-archive-people .section-sidebar,
+body.tax-staff_type .section-sidebar {
+  display: none;
+}
+body.post-type-archive-people .content-main,
+body.tax-staff_type .content-main,
+body.post-type-archive-people .nav-main,
+body.tax-staff_type .nav-main {
+  width: 100%;
+}
+body.post-type-archive-people .content .site-search,
+body.tax-staff_type .content .site-search {
+  display: block;
+}
 body.post-type-archive-people .staff-member,
 body.tax-staff_type .staff-member {
   background: #f9f6e6;
@@ -113,6 +135,7 @@ body.tax-staff_type .tabs li a {
   border: 1px solid #999;
   color: #5C5B56;
   padding: 7px 8px;
+  margin-right: 4px;
 }
 body.post-type-archive-people .tabs li a.current,
 body.tax-staff_type .tabs li a.current {

@@ -16,16 +16,15 @@
 	    $('#rich_editing').parents('table').hide();
 	    $('#rich_editing').parents('table').prev().hide();
     }
-
     if ($('body.wp-admin.user-edit-php').length) {
 
         /* Hide the colour/dashboard options */
         $('#rich_editing').parents('table').hide();
 	    $('#rich_editing').parents('table').prev().hide();
 	    /* Hides the website field */
-        $('#url').parents('tr').hide();
+        //$('#url').parents('tr').hide();
         /* Hides the display name option */
-        $('#display_name').parents('tr').hide();
+        //$('#display_name').parents('tr').hide();
 
         /* repace 'you' with 'they' and 'your' with 'their' in descriptions */
         $('.description').each(function () {
@@ -93,5 +92,21 @@
     	}
     	return false;
 	};
+	function colour_blank_rows()
+	{
+		if ($('.person-row').length) {
+			$('.person-row').each(function(){
+				if (!$('.user-term:checked', this).length) {
+					$('.term-cell', this).css({background:'#eee'});
+				} else {
+					$('.term-cell', this).css({background:'inherit'});
+				}
+			});
+		}
+	}
+	$('.user-term').on('click', function(){
+		colour_blank_rows();
+	});
+	colour_blank_rows();
     
 })(jQuery);
