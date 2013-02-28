@@ -82,9 +82,11 @@ endwhile; // End the loop
 // Sort by last name
 function sortByLastName($a, $b)
 {
-    if($a["usermeta"]["last_name"][0] < $b["usermeta"]["last_name"][0]) {
+	$surname_a = get_surname($a);
+	$surname_b = get_surname($b);
+    if($surname_a < $surname_b) {
         return -1;
-    } else if ($a["usermeta"]["last_name"][0] > $b["usermeta"]["last_name"][0]) {
+    } else if ($surname_a > $surname_b) {
         return 1;
     }
     return 0;
@@ -97,6 +99,20 @@ function sortByMenuOrder($a, $b) {
 		return 1;
 	}
 	return 0;
+}
+
+function get_surname($obj)
+{
+	if (!$obj["usermeta"]) {
+		if (strpos(trim($obj["page"]->post_title), " ") !== false) {
+			$surname = substr(strrchr(trim($obj["page"]->post_title), " "), 1 );
+		} else { 
+			$surname = trim($obj["page"]->post_title);
+		}
+	} else {
+		$surname = $obj["usermeta"]["last_name"][0];
+	}
+	return $surname;
 }
 
 /* sort by last name unless key staff */
@@ -126,7 +142,7 @@ if (!count($people)) {
 		print('<div class="staff-member vcard">');
 
 		/* determine whether there is more content for the current profile */
-		$full = ((isset($person["usermeta"]['bio']) && trim($person["usermeta"]['bio'][0] != "")) || (isset($person["usermeta"]['research_interests']) && trim($person["usermeta"]['research_interests'][0]) != "") || (!$person['user'] && trim(strip_tags($person['page']->post_content)) == ""));
+		$full = ((isset($person["usermeta"]['bio']) && trim($person["usermeta"]['bio'][0] != "")) || (isset($person["usermeta"]['research_interests']) && trim($person["usermeta"]['research_interests'][0]) != "") || (!$person['user'] && trim(strip_tags($person['page']->post_content)) != ""));
 
 		/* get the page URL */
 		$pageURL = get_permalink($person["page"]->ID);

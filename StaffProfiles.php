@@ -1322,6 +1322,15 @@ class StaffProfiles
 			}
 			$out .= '</span> ';
 		}
+		if (isset($pub["publishedproceedings"]) && trim($pub["publishedproceedings"]) != "") {
+			$out .= '<span class="publishedproceedings">Proceedings: ';
+			if (strpos(trim($pub["publishedproceedings"]), 'http') === 0) {
+				$out .= sprintf('<a href="%s">%s</a>', trim($pub["publishedproceedings"]), trim($pub["publishedproceedings"]));
+			} else {
+				$out .= trim($pub["publishedproceedings"]);
+			}
+			$out .= '</span> ';
+		}
 		$out .= self::format_publisher($pub);
 		$out .= self::format_issue($pub);
 		$out .= self::format_status($pub);
