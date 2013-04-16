@@ -43,20 +43,22 @@
     $('#upload_image_button').click(function() {
         formfield = 'uol_staff_photo_url';
         tb_show('', 'media-upload.php?type=image&amp;TB_iframe=true');
+	    /* callback for media upload */
+	    window._old_send_to_editor = window.send_to_editor;
+	    window.send_to_editor = function(html) {
+	        imgurl = $('img',html).attr('src');
+	        if (typeof(imgurl) === "undefined") {
+	            imgurl = $(html).attr('src');
+	        }
+	        if (typeof(imgurl) !== "undefined") {
+	            $('#uol_staff_photo_url').val(imgurl);
+	        }
+	        tb_remove();
+	        $('#uol_staff_photo_url').trigger("change");
+	        window.send_to_editor = window._old_send_to_editor;
+	    }
         return false;
     });
-    /* callback for media upload */
-    window.send_to_editor = function(html) {
-        imgurl = $('img',html).attr('src');
-        if (typeof(imgurl) === "undefined") {
-            imgurl = $(html).attr('src');
-        }
-        if (typeof(imgurl) !== "undefined") {
-            $('#uol_staff_photo_url').val(imgurl);
-        }
-        tb_remove();
-        $('#uol_staff_photo_url').trigger("change");
-    }
     $('#clear_image_button').click(function(){
         $('#uol_staff_photo_url').val("");
         $('#uol_staff_photo_url').trigger("change");
