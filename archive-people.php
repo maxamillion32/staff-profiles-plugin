@@ -11,7 +11,7 @@
 get_header();
 
 /* get top level staff types */
-$staff_types = StaffProfiles::get_staff_types(false);
+$staff_types = StaffProfiles::get_staff_types();
 
 /**
  * alter the Wordpress query to:
@@ -126,7 +126,7 @@ if ($current_term->slug == 'key') {
 print('<ul class="tabs">');
 foreach ($staff_types as $term) {
 	$class = ($term->slug == $current_term->slug)? ' class="current"': '';
-	printf('<li><a href="%s/people/%s"%s>%s</a></li>', get_bloginfo('url'), $term->slug, $class, $term->name);
+	printf('<li><a href="%s/people/type/%s"%s>%s</a></li>', get_bloginfo('url'), $term->slug, $class, $term->name);
 }
 print('</ul>');
 

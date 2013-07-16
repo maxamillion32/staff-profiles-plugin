@@ -5,7 +5,7 @@ Plugin URI: http://essl-pvac.github.com/plugins/staff-profiles-plugin/
 Description: Plugin to enable additional profile fields for members of University staff
 Author: Peter Edwards / Small Hadron Collider
 Author URI: http://www.essl.leeds.ac.uk/for-staff/staff/edwards.html
-Version: 1.1
+Version: 1.2
 License: GPL3
 
 This program is free software; you can redistribute it and/or modify
@@ -38,13 +38,12 @@ class StaffProfiles
 	/**
 	 * constructors - disallow instantiation
 	 */
-	final private function StaffProfiles()	{}
 	final private function __construct() {}
 
 	/**
 	 * plugin version
 	 */
-	static $version = '1.1';
+	static $version = '1.2';
 	
 	/**
 	 * registers all actions in Wordpress API
@@ -56,50 +55,58 @@ class StaffProfiles
 		 ************************************/
 
 		/* add actions to show extra fields in profile form */
-		add_action( 'show_user_profile', array('StaffProfiles', 'show_extra_profile_fields_user') );
-		add_action( 'edit_user_profile', array('StaffProfiles', 'show_extra_profile_fields_admin') );
+		add_action( 'show_user_profile', array(__CLASS__, 'show_extra_profile_fields_user') );
+		add_action( 'edit_user_profile', array(__CLASS__, 'show_extra_profile_fields_admin') );
 
 		/* add actions to save extra fields */
-		add_action( 'personal_options_update', array('StaffProfiles', 'save_extra_profile_fields_user') );
-		add_action( 'edit_user_profile_update', array('StaffProfiles', 'save_extra_profile_fields_admin') );
+		add_action( 'personal_options_update', array(__CLASS__, 'save_extra_profile_fields_user') );
+		add_action( 'edit_user_profile_update', array(__CLASS__, 'save_extra_profile_fields_admin') );
 
 		/* filter to remove password fields from profile */
-		add_filter('show_password_fields', array('StaffProfiles', 'remove_password_fields'), 10, 1);
+		add_filter('show_password_fields', array(__CLASS__, 'remove_password_fields'), 10, 1);
 
 		/* filter to remove contact methods fields from profile */
-		add_filter('user_contactmethods', array('StaffProfiles', 'remove_contact_methods'), 10, 1);
+		add_filter('user_contactmethods', array(__CLASS__, 'remove_contact_methods'), 10, 1);
 
 		/* filters to add paste buttons to the teeny mce editor */
-   		add_filter( 'teeny_mce_plugins', array('StaffProfiles', 'teeny_mce_plugins'), 10, 2);
-   		add_filter( 'teeny_mce_buttons', array('StaffProfiles', 'teeny_mce_buttons'), 10, 2);
+   		add_filter( 'teeny_mce_plugins', array(__CLASS__, 'teeny_mce_plugins'), 10, 2);
+   		add_filter( 'teeny_mce_buttons', array(__CLASS__, 'teeny_mce_buttons'), 10, 2);
 
 		/* enqueues scripts for admin side */
-		add_action( 'admin_enqueue_scripts', array('StaffProfiles', 'add_admin_scripts'));
+		add_action( 'admin_enqueue_scripts', array(__CLASS__, 'add_admin_scripts'));
 
 		/************************************
 		 * People post type                 *
 		 ************************************/
 		
 		/* Add People custom post type and staff types taxonomy */
-		add_action( 'init', array('StaffProfiles', 'add_custom_type' ), 181 );
+		add_action( 'init', array(__CLASS__, 'add_custom_type' ), 181 );
 
 		/* customise People post type */
-		add_action( 'add_meta_boxes', array('StaffProfiles', 'register_metaboxes' ) );
-		add_action( 'save_post', array('StaffProfiles','save_metaboxes' ));
+		add_action( 'add_meta_boxes', array(__CLASS__, 'register_metaboxes' ) );
+		add_action( 'save_post', array(__CLASS__,'save_metaboxes' ));
 
 		/* template redirections */
-		add_filter( 'single_template', array('StaffProfiles', 'people_template'));
-		add_filter( 'archive_template', array('StaffProfiles', 'people_archive_template'));
+		add_filter( 'single_template', array(__CLASS__, 'people_template'));
+		add_filter( 'archive_template', array(__CLASS__, 'people_archive_template'));
+
+		/* filter for people listing page in WP admin */
+		add_action( 'restrict_manage_posts' , array(__CLASS__, 'restrict_people_by_type') );
+
+		/* extra column for staff types for people listing page in WP admin */
+		add_action( 'manage_edit-people_columns', array(__CLASS__, 'add_people_columns') );
+		add_action( 'manage_people_posts_custom_column', array(__CLASS__, 'show_people_columns'), 10, 2 );
+
 
 		/************************************
 		 * Plugin administration            *
 		 ************************************/
 
 		/* add an admin page */
-		add_action('admin_menu', array('StaffProfiles', 'add_admin_page'));
+		add_action('admin_menu', array(__CLASS__, 'add_admin_page'));
 
 		/* run the upgrade routine */
-		add_action( 'init', array('StaffProfiles', 'upgrade'), 182 );
+		add_action( 'init', array(__CLASS__, 'upgrade'), 182 );
 	}
 	
 	/**
@@ -108,7 +115,7 @@ class StaffProfiles
  	public static function add_admin_scripts()
  	{   
 		wp_enqueue_script('staff-profiles-admin-js', plugins_url('/js/admin.min.js', __FILE__), array('jquery'), self::$version, true);
-		//wp_enqueue_style('staff-profiles-admin-css', plugins_url('/css/admin.min.css', __FILE__), array('jquery-ui'));
+		wp_enqueue_style('staff-profiles-admin-css', plugins_url('/css/admin.min.css', __FILE__));
 	}
 
 	/* remove password update field */
@@ -345,6 +352,106 @@ class StaffProfiles
 		return $out;
 	}
 	
+	/**
+	 * method used recirsively to return a nested list to represent a hierarchical taxonomy's terms
+	 */
+	public static function get_nested_list($data, $sortorder = false, $parent_id = 0)
+	{
+		$items = array();
+		foreach ($data as $item) {
+			if ($item->parent == $parent_id) {
+				$items[] = array(
+					'term_id' => $item->term_id,
+					'found' => false,
+					'html' => sprintf('<li data-term-id="%d">%s%s</li>', $item->term_id, $item->name, self::get_nested_list($data, $sortorder, $item->term_id))
+				);
+			}
+		}
+	    if (count($items)) {
+	    	/* see if there is a sort order defined */
+	    	$sort = self::get_sortorder($sortorder, $parent_id);
+			if (count($sort)) {
+				/* re-order based on the $term_id */
+				$items_tmp = array();
+				$leftovers = array();
+				foreach($sort as $term_id) {
+					for ($i = 0; $i < count($items); $i++) {
+						if ($term_id == $items[$i]["term_id"]) {
+							$items[$i]["found"] = true;
+							$items_tmp[] = $items[$i];
+						}
+					}
+				}
+				/* clean up any terms not defined in the order */
+				for ($i = 0; $i < count($items); $i++) {
+					if (!$items[$i]["found"]) {
+						$items_tmp[] = $items[$i];
+					}
+				}
+				$items = $items_tmp;
+			}
+	    	$out = sprintf('<ul class="term-sortable" data-parent-id="%d">', $parent_id, $parent_id);
+	    	foreach ($items as $i) {
+	    		$out .= $i['html'];
+	    	}
+	    	$out .= '</ul>';
+	    	return $out;
+    	} else {
+        	return '';
+    	}
+	}
+
+	/**
+	 * returns a sortable HTML unordered, nested list
+	 */
+	public static function sortable_category_list($field_name, $taxonomy)
+	{
+		wp_enqueue_script('jquery-ui-sortable');
+		$terms = get_terms($taxonomy, array(
+			'hide_empty' => false
+		));
+		$sortorder = get_option($field_name);
+		$out = self::get_nested_list($terms, $sortorder);
+		$out .= sprintf('<input type="hidden" id="%s" name="%s" value="%s" />', $field_name, $field_name, $sortorder);
+		$out .= '<script type="text/javascript">';
+		$out .= "\njQuery(function($){\n";
+		$out .= "	$('.term-sortable li').css({border:'1px solid #ccc',background:'#efefef',width:'300px',margin:'2px 0',padding:'3px',display:'block',cursor:'move'});\n";
+		$out .= "	$('.term-sortable').sortable({\n";
+		$out .= "	    update: function(event, ui) {\n";
+		$out .= "	        var term_map = '';\n";
+		$out .= "	        $('.term-sortable').each(function(){\n";
+		$out .= "	            term_map += parseInt($(this).attr('data-parent-id'))+':';\n";
+		$out .= "	            var items = [];\n";
+		$out .= "	            $('>li', this).each(function(){\n";
+		$out .= "	                items.push(parseInt($(this).attr('data-term-id')));\n";
+		$out .= "	            });\n";
+		$out .= "	            term_map += items.join(',') + ';';\n";
+		$out .= "	        });\n";
+		$out .= "	        $('#" . $field_name . "').val(term_map);\n";
+		$out .= "	    }\n";
+		$out .= "	});\n";
+		$out .= "	$('.term-sortable').disableSelection();\n";
+		$out .= "});\n</script>\n";
+		return $out;
+	}
+
+	public static function get_sortorder($str, $parent_id)
+	{
+		$branches = array();
+		if (preg_match('/^[0-9;:,]+$/', $str)) {
+			$branches_tmp = explode(";", $str);
+			if (count($branches_tmp)) {
+				foreach($branches_tmp as $branch) {
+					$kvp = explode(":", $branch);
+					if (count($kvp) == 2 && $kvp[0] == $parent_id) {
+						return explode(",", $kvp[1]);
+					}
+				}
+			}
+		}
+		return $branches;
+	}
+
 	/**
 	 * returns the HTML for a checkbox field
 	 * @param object $user WP_User
@@ -591,20 +698,6 @@ class StaffProfiles
 	 */
 	public static function add_custom_type()
 	{
-	    register_post_type( 'people',
-			array(
-				'labels' => array(
-					'name' => __( 'People' ),
-					'singular_name' => __( 'People' )
-				),
-				'public' => true,
-				'has_archive' => true,
-				'hierarchical' => true,
-				'menu_position' => 20,
-				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
-				'supports' => array('title','editor','excerpt')
-			)
-		);
 		/* Add new hierarchical taxonomy (like categories) */
 		register_taxonomy('staff_type', array('people'), array(
 			'hierarchical' => true,
@@ -623,10 +716,95 @@ class StaffProfiles
 			),
 			'show_ui' => true,
 			'query_var' => true,
-			'rewrite' => false
+			'rewrite' => array(
+				'slug' => 'people/type',
+				'with_front' => false,
+				'hierarchical' => true
+			)
 		));
+	    register_post_type( 'people',
+			array(
+				'labels' => array(
+					'name' => __( 'People' ),
+					'singular_name' => __( 'People' )
+				),
+				'public' => true,
+				'has_archive' => true,
+				'hierarchical' => true,
+				'menu_position' => 20,
+				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
+				'supports' => array('title','editor','excerpt'),
+				'rewrite' => array(
+					'slug' => 'people',
+					'with_front' => false
+				)
+			)
+		);
 		/* do the rewrites for the taxonomy independently of Wordpress */
-		add_filter( 'generate_rewrite_rules', array('StaffProfiles', 'taxonomy_slug_rewrite') );
+		//add_filter( 'generate_rewrite_rules', array(__CLASS__, 'taxonomy_slug_rewrite') );
+	}
+
+	/**
+	 * adds a drop-down list of staff types to enable filtering of the people admin lists
+	 * called with the restrict_manage_posts filter
+	 */
+	public static function restrict_people_by_type()
+	{
+		global $typenow;
+		global $wp_query;
+		$selected = isset($wp_query->query["staff_type"])? $wp_query->query["staff_type"]: false;
+		if ($typenow == 'people') {
+			$staff_types = self::get_staff_types();
+			if (count($staff_types)) {
+				$sel = $selected === false? ' selected="selected"': '';
+				printf('<select name="staff_type"><option value=""%s>Show all staff types</option>', $sel);
+				foreach ($staff_types as $term) {
+					$sel = ($selected === $term->slug)? ' selected="selected"': '';
+					printf('<option value="%s"%s>%s</option>', $term->slug,$sel, $term->name);
+				}
+				print('</select>');
+			}
+		}
+	}
+
+	/**
+	 * adds columns to the people listing table
+	 * hooks into 'manage_edit-people_columns'
+	 * @param array $posts_columns
+	 * @return array $new_posts_columns
+	 */
+	public static function add_people_columns( $posts_columns )
+	{
+		$posts_columns['title'] = 'Name';
+		//$posts_columns['event_is_sticky'] = __( 'Sticky', 'event-post-type' );
+		//$posts_columns['author'] = __( 'Author', 'event-post-type' );
+		$posts_columns['staff_type'] = 'Staff type';
+		$posts_columns['date'] = 'Date';
+		return $posts_columns;
+	}
+
+   	/**
+	 * shows the event date column of the manage events table
+	 * hooks into 'manage_event_posts_custom_column'
+	 * @param $column_id
+	 * @param $post_id
+	 */
+	public static function show_people_columns( $column_id, $post_id )
+	{
+		global $post;
+		switch ($column_id) {
+			case "staff_type":
+				$et = get_the_terms($post_id, $column_id);
+				$url = admin_url("edit.php?post_status=all&post_type=people&$column_id=");				
+				if (is_array($et)) {
+					$term_links = array();
+					foreach($et as $key => $term) {
+						$term_links[] = '<a href="' . $url . $term->slug . '">' . $term->name . '</a>';
+					}
+					echo implode(' | ', $term_links);
+				}
+				break;
+		}
 	}
 
 	/**
@@ -649,7 +827,7 @@ class StaffProfiles
 	 */
 	public static function add_admin_page()
 	{
-		add_submenu_page('edit.php?post_type=people', 'People admin', 'People admin', 'list_users', 'people-admin', array('StaffProfiles', 'admin_page') );
+		add_submenu_page('edit.php?post_type=people', 'People admin', 'People admin', 'list_users', 'people-admin', array(__CLASS__, 'admin_page') );
 	}
 	
 	/**
@@ -687,6 +865,7 @@ class StaffProfiles
 		   	update_option("pubtypes_sortorder", $_POST['pubtypes_sortorder']);
 		   	
 		   	/* update staff type sort order */
+
 		   	update_option("stafftypes_sortorder", $_POST['stafftypes_sortorder']);
 
 		   	/* get staff types AFTER sort option has been updated */
@@ -783,12 +962,7 @@ class StaffProfiles
 			/* staff types sort order */
 			print('<h2>Staff types sort order</h2><p>Set the default sort order for the site by dragging and dropping the different staff types in this list:</p>');
 
-			$default_order = array();
-			foreach ($staff_types as $term) {
-				$default_order[$term->slug] = $term->name;
-			}
-
-			echo self::sortable_list("stafftypes_sortorder", $default_order);
+			echo self::sortable_category_list("stafftypes_sortorder", "staff_type");
 
 			echo $submit_button;
 
@@ -816,50 +990,33 @@ class StaffProfiles
 	 * currently gets the top level categories ONLY
 	 * would need to add in rewrites to display nested categories
 	 */
-	public static function get_staff_types($include_empty = true)
+	public static function get_staff_types($hide_empty = true, $parent_id = 0)
 	{
-		$staff_types = get_terms('staff_type', array('hide_empty' => false, 'parent' => 0) );
+		$staff_types = get_terms('staff_type', array('hide_empty' => (bool) $hide_empty, 'parent' => intVal($parent_id)) );
 		$sortorder = get_option('stafftypes_sortorder');
-		/* whether to save the sortorder */
-		$save_sortorder = false;
-		/* array to place sorted terms in */
-		$sorted_types = array();
-		if ( ! $sortorder ) {
-			/* default sort order */
-			$sorted_slugs = array('key', 'academic', 'technical', 'visitor', 'phd', 'graduates');
-			$save_sortorder = true;
-		} else {
-			/* get the sortorder */
-			$sorted_slugs = explode(",", $sortorder);
-		}
-		/* keep track of all names */
-		$all_slugs = array();
-		/* make sure each name is in the sort list */
-		foreach ($staff_types as $term) {
-			if ( ! in_array($term->slug, $sorted_slugs) ) {
-				$sorted_slugs[] = $term->slug;
-				$save_sortorder = true;
-			}
-			$all_slugs[] = $term->slug;
-		}
-		/* remove any anomalous names */
-		$sorted_slugs = array_intersect($sorted_slugs, $all_slugs);
-		/* put the terms in order */
-		foreach ($sorted_slugs as $type_slug) {
-			foreach ($staff_types as $term) {
-				if ($term->slug == $type_slug) {
-					if ($include_empty) {
+		/* see if they have been sorted */
+		$sort = self::get_sortorder($sortorder, $parent_id);
+		/* put them in order */
+		if (count($sort)) {
+			/* re-order based on the $term_id */
+			$sorted_types = array();
+			$found = array();
+			foreach($sort as $term_id) {
+				foreach ($staff_types as $term) {
+					if ($term_id == $term->term_id) {
+						$found[] = $term_id;
 						$sorted_types[] = $term;
-					} else {
-						if ( intval($term->count) > 0 ) {
-							$sorted_types[] = $term;
-						}
 					}
 				}
 			}
-		}
-		if ($save_sortorder) {
-			update_option('stafftypes_sortorder', implode(",", $sorted_slugs));
+			/* clean up any terms not defined in the order */
+			foreach ($staff_types as $term) {
+				if (!in_array($term->term_id, $found)) {
+					$sorted_types[] = $term;
+				}
+			}
+		} else {
+			$sorted_types = $staff_types;
 		}
 		return $sorted_types;
 	}
@@ -962,6 +1119,22 @@ class StaffProfiles
 
 				case '1.1':
 					/* upgrade from 1.1 */
+
+					/* new way of storing sort order for staff types */
+					$sortorder = get_option('stafftypes_sortorder');
+					$staff_types = self::get_staff_types(false, 0);
+					$sorted_slugs = explode(',', $sortorder);
+					$sorted_ids = array();
+					foreach($sorted_slugs as $slug) {
+						foreach($staff_types as $term) {
+							if ($term->slug == $slug) {
+								$sorted_ids[] = $term->term_id;
+							}
+						}
+					}
+					$new_sortorder = '0:' . implode(",", $sorted_ids) . ';';
+					update_option('stafftypes_sortorder', $new_sortorder);
+
 			}
 
 			/* update the version option */
@@ -977,13 +1150,13 @@ class StaffProfiles
 	   add_meta_box(
 			'staff_id_meta',
 			'Staff Wordpress ID / Username',
-			array('StaffProfiles', 'staff_id_box'),
+			array(__CLASS__, 'staff_id_box'),
 			'people', 'normal', 'high'
 		);
 		add_meta_box(
 			'staff_photo_url',
 			'Staff Photo URL',
-			array('StaffProfiles', 'staff_photo_url_box'),
+			array(__CLASS__, 'staff_photo_url_box'),
 			'people', 'normal', 'high'
 		);
 	}
@@ -1060,7 +1233,7 @@ class StaffProfiles
 	{
 		global $wp_query, $post;
 		if ($post->post_type == "people") {
-			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
+			add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_frontend_scripts_and_styles' ) );
 			$path = dirname(__FILE__) . '/single-people.php';
 			if (file_exists($path)) {
 				return $path;
@@ -1076,7 +1249,7 @@ class StaffProfiles
 	{
 		global $wp_query, $post;
 		if ($post->post_type == "people") {
-			add_action( 'wp_enqueue_scripts', array( 'StaffProfiles', 'enqueue_frontend_scripts_and_styles' ) );
+			add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_frontend_scripts_and_styles' ) );
 			$path = dirname(__FILE__).'/archive-people.php';
 			if (file_exists($path)) {
 				return $path;
