@@ -18,7 +18,7 @@ get_header();
     
     if ( ! empty($id) ) {
 		if ( ! is_numeric($id)) {
-			$user = get_userdatabylogin($id);
+			$user = get_user_by('login', $id);
 			$id = $user->ID;
 		} else {
 			$user = get_userdata($id);

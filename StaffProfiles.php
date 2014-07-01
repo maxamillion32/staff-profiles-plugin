@@ -198,16 +198,16 @@ class StaffProfiles
 			{
 				if(isset($_POST[$field["name"]]))
 				{
-					update_usermeta( $user_id, $field["name"], 1);
+					update_user_meta( $user_id, $field["name"], 1);
 				}
 				else
 				{
-					update_usermeta( $user_id, $field["name"], 0);
+					update_user_meta( $user_id, $field["name"], 0);
 				}
 			}
 			else
 			{
-				update_usermeta( $user_id, $field["name"], $_POST[$field["name"]] );
+				update_user_meta( $user_id, $field["name"], $_POST[$field["name"]] );
 			}
 			if ($field["name"] == 'pubtypes_sortorder') {
 				if (isset($_POST['pubtypes_sortorder_delete'])) {
@@ -794,8 +794,8 @@ class StaffProfiles
 		global $post;
 		switch ($column_id) {
 			case "staff_type":
-				$et = get_the_terms($post_id, $column_id);
-				$url = admin_url("edit.php?post_status=all&post_type=people&$column_id=");				
+				$et = get_the_terms($post_id, "staff_type");
+				$url = admin_url("edit.php?post_status=all&post_type=people&staff_type=");				
 				if (is_array($et)) {
 					$term_links = array();
 					foreach($et as $key => $term) {
@@ -1573,7 +1573,13 @@ class StaffProfiles
 
 	private static function format_Artefact($pub, $display)
 	{
-		return self::format_minimal($pub);
+		$out = "<p>";
+		$out .= self::format_basics($pub);
+		$out .= self::format_artefact_publisher($pub);
+		$out .= self::format_status($pub);
+		$out .= "</p>";
+		$out .= self::format_extras($pub, $display);
+		return $out;
 	}
 
 	private static function format_Design($pub, $display)
@@ -1691,6 +1697,28 @@ class StaffProfiles
 		return $out;
 	}
 
+	/**
+	 * artefacts do not contain a publisher field, so the Location field is used instead
+	 * also, the medium field is inserted before the publisher
+	 */
+	private static function format_artefact_publisher($pub)
+	{
+		$out = "";
+		if (isset($pub["medium"]) && trim($pub["medium"]) != "") {
+			$sep = (substr(trim($pub["medium"]), -1) == ":")? "": ":";
+			$out .= ' <span class="publish-medium">' . trim($pub["medium"]) . $sep . '</span>';
+		}
+		if (isset($pub["location"]) && trim($pub["location"]) != "") {
+			$sep = (substr(trim($pub["location"]), -1) == ".")? "": ".";
+			if (isset($pub["publisherurl"]) && trim($pub["publisherurl"]) != "") {
+				$out .= ' <span class="publisher"><a href="' . trim($pub["publisherurl"]) . '">' . trim($pub["location"]) . '</a>' . $sep . '</span>';
+			} else {
+				$out .= ' <span class="publisher">' . trim($pub["location"]) . $sep . '</span>';
+			}
+		}
+		return $out;
+	}
+
 	private static function format_pages($pub)
 	{
 		$out = "";
@@ -1751,7 +1779,12 @@ class StaffProfiles
 			}
 		}
 		if ($display["abstract"] && isset($pub["abstract"]) && trim($pub["abstract"]) != "") {
-			$out .= '<p class="abstract">' . trim($pub["abstract"]) . '</p>';
+			if ($pub["medium"] == "CD") {
+				$out .= '<p><strong>Track List</strong></p><ol>';
+				$out .= substr(preg_replace('/[0-9]+\. /', '</li><li style="list-style:decimal outside;margin:.5em 0 0 2em;">', $pub["abstract"]), 5) . '</li></ol>';
+			} else {
+				$out .= '<p class="abstract">' . trim($pub["abstract"]) . '</p>';
+			}
 		}
 		return $out;
 	}
