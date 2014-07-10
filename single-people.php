@@ -144,12 +144,22 @@ get_header();
             /* set order of publication types */
             $types_filter = StaffProfiles::getPublicationTypesFilter($id);
 
+            /* set publication output format */
+            if ( get_user_meta( $id, 'publication_format_harvard', true ) ) {
+            	$display_format = 'harvard';
+            } elseif ( get_user_meta( $id, 'publication_format_apa', true ) ) {
+            	$display_format = 'apa';
+            } else {
+            	$display_format = 'mhra';
+            }
+
 			$publications = StaffProfiles::get_publications( array(
 				'id' => $symplectic_id,
 				'header_level'=>'h4',
 				'status' => $status_filter,
 				'types' => $types_filter,
-				'display' => $display_filters
+				'display' => $display_filters,
+				'format' => $display_format
 			) );
 
 			if ($publications != "") :

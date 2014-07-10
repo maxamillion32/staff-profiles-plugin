@@ -8,7 +8,6 @@ window.Modernizr=function(a,b,c){function G(){}function F(a,b){var c=a.charAt(0)
  */
 ;(function($)
 {
-   
     /*
      * Javascript for the Staff Profile Pages
      * Creates an accordion on some of the fields
@@ -22,7 +21,7 @@ window.Modernizr=function(a,b,c){function G(){}function F(a,b){var c=a.charAt(0)
     	});
     }
 
-    $('.abstract').before('<a href="#" class="abstractlink">&#9660; Read abstract</a>').hide();
+    $('.abstract').before('<a href="#" class="abstractlink indent">&#9660; Read abstract</a>').hide();
     $('.abstractlink').click(function(){
     	var link = this;
 		if ($(this).next(':visible').length) {
@@ -32,6 +31,20 @@ window.Modernizr=function(a,b,c){function G(){}function F(a,b){var c=a.charAt(0)
 		} else {
 			$(this).next().slideDown('slow', function(){
 				$(link).html('&#9650; Hide abstract');
+			});
+		}
+		return false;
+	});
+    $('.tracklist').before('<a href="#" class="tracklistlink indent">&#9660; Track list</a>').hide();
+    $('.tracklistlink').click(function(){
+    	var link = this;
+		if ($(this).next(':visible').length) {
+			$(this).next().slideUp('slow', function(){
+				$(link).html('&#9660; Track list');
+			});
+		} else {
+			$(this).next().slideDown('slow', function(){
+				$(link).html('&#9650; Hide track list');
 			});
 		}
 		return false;

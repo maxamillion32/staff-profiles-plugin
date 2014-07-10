@@ -161,74 +161,55 @@ body.tax-staff_type {
 }
 
 /* publications pages */
-ul.publications li 
-{
-  list-style:none;
-  background:none;
-  padding-left:0;
-  margin:1em 0;
-}
+ul.publications {
+	list-style:none;
+	background:none;
+	padding-left:0;
+	margin:1em 0;
 
-ul.publications li p 
-{
-  margin:0.5em 0;
-}
+	li {
+		list-style:none;
+  		margin:0.5em 0;
 
-.publication .authors 
-{
-    color:#666;
-    font-weight:bold;
-}
+		p {
+			margin:0;
+		}
+	}
+	.indent {
+		padding-left: 3em;
+		&.hanging {
+			text-indent: -3em;
+		}
+	}
 
-.publication .publicationyear 
-{
-}
+	&.mhra {
+		.authors {
+		}
 
-.publication .title 
-{
-    color:#333;
-    font-style:italic;
-}
+		.title,
+		.parent-title,
+		.journal {
+			font-style:italic;
+		}
 
-.publication .title-with-parent
-{
-    color:#333;
-    font-style:normal;
-}
+		.title-with-parent {
+			font-style:normal;
+		}
 
-.publication .parent-title, .publication .journal 
-{
-    color:#333;
-    font-style:italic;
-}
+		.volume {
+		}
 
+		.issue {
+		}
 
-.publication .volume 
-{
-    font-weight:bold;
-}
+		.startdate,
+		.finishdate {
+			font-style:italic;
+		}
 
-.publication .issue 
-{
-    color:#666;
-}
-
-.publication .pages 
-{
-}
-
-.publication .abstract 
-{
-}
-
-.publication .startdate, .publication .finishdate 
-{
-    color:#666;
-    font-style:italic;
-}
-
-.publication .publish-status 
-{
-    color:#966;
-    font-style:italic;
+		.publish-status {
+			color:#966;
+			font-style:italic;
+		}
+	}
 }

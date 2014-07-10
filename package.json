@@ -1,0 +1,22 @@
+{
+  "name": "staff-profiles-plugin",
+  "version": "1.2.1",
+  "last_updated": "2014-04-25T17:40:33+01:00",
+  "description": "Plugin to enable additional profile fields for members of University staff",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/essl-pvac/staff-profiles-plugin.git"
+  },
+  "author": "Peter Edwards",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/essl-pvac/staff-profiles-plugin/issues"
+  },
+  "homepage": "https://github.com/essl-pvac/staff-profiles-plugin",
+  "devDependencies": {
+    "grunt": "~0.4.2",
+    "grunt-contrib-less": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-watch": "*"
+  }
+}

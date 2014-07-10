@@ -5,13 +5,11 @@
 .accordion h3 {
   /*background:#353431;
 	color:white !important;*/
-
   color: #353431;
   background: #fff;
   border-bottom: 1px solid #999;
   margin: 1px 0 0 !important;
   /*padding:5px 10px;*/
-
   padding: 6px 10px 6px 30px;
   position: relative;
   -webkit-transition: background 0.25s ease-in-out;
@@ -21,7 +19,6 @@
 }
 .accordion h3:hover {
   /*background:#555;*/
-
   border-bottom: 1px solid #353431;
 }
 .accordion h3:hover span.arrow {
@@ -31,7 +28,6 @@
 .accordion h3 span.arrow {
   position: absolute;
   /*right:10px;*/
-
   left: 4px;
   top: 4px;
   display: block;
@@ -152,44 +148,38 @@ body.tax-staff_type .tabs li a:hover {
   color: #e39658;
 }
 /* publications pages */
-ul.publications li {
+ul.publications {
   list-style: none;
   background: none;
   padding-left: 0;
   margin: 1em 0;
 }
-ul.publications li p {
+ul.publications li {
+  list-style: none;
   margin: 0.5em 0;
 }
-.publication .authors {
-  color: #666;
-  font-weight: bold;
+ul.publications li p {
+  margin: 0;
 }
-.publication .title {
-  color: #333;
+ul.publications .indent {
+  padding-left: 3em;
+}
+ul.publications .indent.hanging {
+  text-indent: -3em;
+}
+ul.publications.mhra .title,
+ul.publications.mhra .parent-title,
+ul.publications.mhra .journal {
   font-style: italic;
 }
-.publication .title-with-parent {
-  color: #333;
+ul.publications.mhra .title-with-parent {
   font-style: normal;
 }
-.publication .parent-title,
-.publication .journal {
-  color: #333;
+ul.publications.mhra .startdate,
+ul.publications.mhra .finishdate {
   font-style: italic;
 }
-.publication .volume {
-  font-weight: bold;
-}
-.publication .issue {
-  color: #666;
-}
-.publication .startdate,
-.publication .finishdate {
-  color: #666;
-  font-style: italic;
-}
-.publication .publish-status {
+ul.publications.mhra .publish-status {
   color: #966;
   font-style: italic;
 }

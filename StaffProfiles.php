@@ -594,6 +594,24 @@ class StaffProfiles
 				"type" => "text"
 			),
 			array(
+				"name" => "publication_format_mhra",
+				"label" => "",
+				"description" => "Format my publications in MHRA style",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_format_apa",
+				"label" => "",
+				"description" => "Format my publications in APA style",
+				"type" => "checkbox"
+			),
+			array(
+				"name" => "publication_format_harvard",
+				"label" => "",
+				"description" => "Format my publications in Harvard style",
+				"type" => "checkbox"
+			),
+			array(
 				"name" => "publication_status_null",
 				"label" => "",
 				"description" => "Tick this box to include publications <em>with no status set</em> in your list",
@@ -732,7 +750,7 @@ class StaffProfiles
 				'has_archive' => true,
 				'hierarchical' => true,
 				'menu_position' => 20,
-				'menu_icon' => plugins_url('/img/menu-icon.png', __FILE__),
+				'menu_icon' => 'dashicons-id-alt',
 				'supports' => array('title','editor','excerpt'),
 				'rewrite' => array(
 					'slug' => 'people',
@@ -776,8 +794,6 @@ class StaffProfiles
 	public static function add_people_columns( $posts_columns )
 	{
 		$posts_columns['title'] = 'Name';
-		//$posts_columns['event_is_sticky'] = __( 'Sticky', 'event-post-type' );
-		//$posts_columns['author'] = __( 'Author', 'event-post-type' );
 		$posts_columns['staff_type'] = 'Staff type';
 		$posts_columns['date'] = 'Date';
 		return $posts_columns;
@@ -1326,11 +1342,14 @@ class StaffProfiles
 	 *	$limit = returns this amount of most recent out of all publication types
 	 *	$sort = date sort order ("desc" = most recent first, "asc" = most recent last) [default = desc]
 	 *	$types = comma separated list of publication types [default = all types]
+	 *  $format = format of bibliographic list
 	 *	Possible types:
 	 *  Book,Chapter, Conference, Journal article, Patent, Report, Software, Performance, Composition, Design, Artefact, Exhibition, Other, Internet publication, Scholarly edition, Poster, Thesis / Dissertation
 	 *  $status = comma separated list of publishing statuses [default = Published only]
 	 *  Possible statuses:
 	 *  Published, Accepted, Submitted, Unpublished, In preparation
+	 *  Possible formats:
+	 *  MHRA, APA, Harvard
 	 */
 
 	public static function get_publications($atts)
@@ -1344,6 +1363,10 @@ class StaffProfiles
 			$header_level = 'h4';
 		}
 
+		if ( ! in_array( $format, array( 'mhra', 'apa', 'harvard' ) ) ) {
+			$format = 'mhra';
+		}
+
 		if (!isset($id))
 		{
 			return $output;
@@ -1353,6 +1376,16 @@ class StaffProfiles
 			/* Include the symplectic parsing classes */
 			include_once(dirname(__FILE__) . '/classes.php');			
 			
+			/* Include the publication formatting classes */
+			include_once(dirname(__FILE__) . '/publication_format.php');			
+
+			/* check we have a class to handle the format */
+			$classname = 'sp_' . $format . '_publication';
+			if ( class_exists( $classname ) ) {
+				$format_obj = new $classname();
+				$format_obj->set_display($display);
+			}
+
 			/* Set cache to 24 hours */
 			if(!isset($cache)){$cache = 86400;}		
 			
@@ -1384,7 +1417,7 @@ class StaffProfiles
 						{
 							$pub[$pa] = $publication->getAttr($pa);
 						}
-						$output .= self::format_publication($pub);
+						$output .= self::format_publication($pub, $format_obj);
 					}
 				
 					$output .= "</ul>";
@@ -1430,7 +1463,7 @@ class StaffProfiles
 						// If there are publications of that type
 						if(count($publications))
 						{
-							$output .= "<" . $header_level . ">" . ucwords($possible) . "s</" . $header_level . "><ul class=\"publications\">";
+							$output .= sprintf('<%s>%ss</%s><ul class="publications %s">', $header_level, ucwords($possible), $header_level, $format);
 			
 							foreach($publications as $publication)
 							{
@@ -1439,7 +1472,7 @@ class StaffProfiles
 								{
 									$pub[$pa] = $publication->getAttr($pa);
 								}
-								$output .= self::format_publication($pub, $display);
+								$output .= self::format_publication($pub, $format_obj);
 							}
 							$output .= "</ul>";
 						}
@@ -1454,354 +1487,17 @@ class StaffProfiles
 	 * publication formatting methods
 	 * one method for each p[ublication type, with some helpers for common fields
 	 */
-	private static function format_publication($pub, $display)
+	private static function format_publication($pub, $format_obj)
 	{
-		$out = '<li class="publication">';
-		$methodname = "format_" . preg_replace("/[^a-zA-Z]/", "", $pub["publicationtype"]);
-		if (method_exists(__CLASS__, $methodname)) {
-			$out .= self::$methodname($pub, $display);
-		} else {
-			$out .= self::format_Other($pub, $display);
-		}
-		$out .= "</li>";
-		return $out;
+		$format_obj->set_publication($pub);
+		return $format_obj->get_formatted_publication();
 	}
-
-	private static function format_Journalarticle($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_issue($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Conference($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		if (trim($pub["conferencename"]) != "") {
-			$out .= '<span class="conferencename">' . trim($pub["conferencename"]) . '</span> ';
-		}
-		if (trim($pub["location"]) != "") {
-			$out .= '<span class="location">(' . trim($pub["location"]) . ')</span> ';
-		}
-		if (isset($pub["startdate"]) && trim($pub["startdate"]) != "") {
-			$out .= '<span class="conferencedate">' . self::format_date(trim($pub["startdate"]), true);
-			if (isset($pub["finishdate"]) && trim($pub["finishdate"]) != "") {
-				$out .= " - " . self::format_date(trim($pub["finishdate"]), true);
-			}
-			$out .= '</span> ';
-		}
-		if (isset($pub["publishedproceedings"]) && trim($pub["publishedproceedings"]) != "") {
-			$out .= '<span class="publishedproceedings">Proceedings: ';
-			if (strpos(trim($pub["publishedproceedings"]), 'http') === 0) {
-				$out .= sprintf('<a href="%s">%s</a>', trim($pub["publishedproceedings"]), trim($pub["publishedproceedings"]));
-			} else {
-				$out .= trim($pub["publishedproceedings"]);
-			}
-			$out .= '</span> ';
-		}
-		$out .= self::format_publisher($pub);
-		$out .= self::format_issue($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Chapter($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_publisher($pub);
-		$out .= self::format_pages($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Other($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_publisher($pub);
-		$out .= self::format_issue($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Book($pub, $display)
-	{
-		$out = self::format_minimal($pub);
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Internetpublication($pub, $display)
-	{
-		$out = self::format_minimal($pub);
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Composition($pub, $display)
-	{
-		$out = self::format_musical($pub);
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Performance($pub, $display)
-	{
-		$out = self::format_musical($pub);
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Report($pub, $display)
-	{
-		$out = self::format_minimal($pub);
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Artefact($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_artefact_publisher($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		$out .= self::format_extras($pub, $display);
-		return $out;
-	}
-
-	private static function format_Design($pub, $display)
-	{
-		return self::format_minimal($pub, $display);
-	}
-
-	private static function format_Scholarlyedition($pub, $display)
-	{
-		return self::format_minimal($pub);
-	}
-
-	private static function format_ThesisDissertation($pub, $display)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		if (isset($pub["fileddate"]) && trim($pub["fileddate"]) != "") {
-			$out .= ' <span class="fileddate">' . self::format_date($pub["fileddate"], true) . '</span> ';
-		}
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-	}
-
-	private static function format_minimal($pub)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_publisher($pub);
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		return $out;
-	}
-
-	private static function format_musical($pub)
-	{
-		$out = "<p>";
-		$out .= self::format_basics($pub);
-		$out .= self::format_publisher($pub);
-		if (isset($pub["medium"]) && trim($pub["medium"]) !== "") {
-			$out .= '<span class="music-medium">' . trim($pub["medium"]) . '</span> ';
-		}
-		if (isset($pub["startdate"]) && trim($pub["startdate"]) != "") {
-			$out .= '<span class="startdate">' . self::format_date(trim($pub["startdate"]), true) . '</span> ';
-		}
-		$out .= self::format_status($pub);
-		$out .= "</p>";
-		return $out;
-	}
-
-	private static function format_basics($pub)
-	{
-		$out = "";
-		if (trim($pub["authors"]) != "") {
-			$out .= '<span class="authors">' . trim($pub["authors"]) . '</span> ';
-		} else {
-			if (isset($pub["editors"]) && trim($pub["editors"]) != "") {
-				$out .= '<span class="authors">' . trim($pub["editors"]) . ' (eds.) </span>';
-			}
-		}
-		if (isset($pub["publicationyear"]) && trim($pub["publicationyear"]) != "") {
-			$out .= '<span class="publicationyear">(' . trim($pub["publicationyear"]) . ')</span> ';
-		}
-		if (trim($pub["title"]) != "") {
-			if ((isset($pub["parenttitle"]) && trim($pub["parenttitle"]) !== "") || (isset($pub["journal"]) && trim($pub["journal"]) !== "")) {
-				$class = "title-with-parent";
-				$title = "&ldquo;" . trim($pub["title"]) . "&rdquo;";
-			} else {
-				$class = "title";
-				$title = trim($pub["title"]);
-			}
-			$out .= '<span class="' . $class . '">' . $title;
-		}
-		if (isset($pub["parenttitle"]) && trim($pub["parenttitle"]) !== "") {
-			$out .= ',</span> ';
-			$out .= '<em>In:</em> ';
-			if (isset($pub["editors"]) && trim($pub["editors"]) != "") {
-				$out .= ' <span class="editors">' . trim($pub["editors"]) . ' (eds.)</span>';
-			}
-			$out .= ' <span class="parent-title">' . trim($pub["parenttitle"]);
-		}
-		if (isset($pub["journal"]) && trim($pub["journal"]) !== "") {
-			$out .= ',</span> ';
-			$out .= '<span class="journal">' . trim($pub["journal"]);
-			if (isset($pub["editors"]) && trim($pub["editors"]) != "") {
-				$out .= ' <span class="editors">' . trim($pub["editors"]) . ' (eds.)</span>';
-			}
-		}
-		$out .= '.</span> ';
-		if (isset($pub["edition"]) && trim($pub["edition"]) != "") {
-			$sep = (substr(trim($pub["edition"]), -1) == ".")? "": ".";
-			$out .= ' <span class="edition">' . trim($pub["edition"]) . $sep . '</span> ';
-		}
-		if (isset($pub["series"]) && trim($pub["series"]) != "") {
-			$sep = (substr(trim($pub["series"]), -1) == ".")? "": ".";
-			$out .= ' <span class="series">' . trim($pub["series"]) . $sep . '</span> ';
-		}
-		return $out;
-	}
-
-	private static function format_publisher($pub)
-	{
-		$out = "";
-		if (isset($pub["placeofpublication"]) && trim($pub["placeofpublication"]) != "") {
-			$sep = (substr(trim($pub["placeofpublication"]), -1) == ":")? "": ":";
-			$out .= ' <span class="publish-place">' . trim($pub["placeofpublication"]) . $sep . '</span>';
-		}
-		if (isset($pub["publisher"]) && trim($pub["publisher"]) != "") {
-			$sep = (substr(trim($pub["publisher"]), -1) == ".")? "": ".";
-			if (isset($pub["publisherurl"]) && trim($pub["publisherurl"]) != "") {
-				$out .= ' <span class="publisher"><a href="' . trim($pub["publisherurl"]) . '">' . trim($pub["publisher"]) . '</a>' . $sep . '</span>';
-			} else {
-				$out .= ' <span class="publisher">' . trim($pub["publisher"]) . $sep . '</span>';
-			}
-		}
-		return $out;
-	}
-
-	/**
-	 * artefacts do not contain a publisher field, so the Location field is used instead
-	 * also, the medium field is inserted before the publisher
-	 */
-	private static function format_artefact_publisher($pub)
-	{
-		$out = "";
-		if (isset($pub["medium"]) && trim($pub["medium"]) != "") {
-			$sep = (substr(trim($pub["medium"]), -1) == ":")? "": ":";
-			$out .= ' <span class="publish-medium">' . trim($pub["medium"]) . $sep . '</span>';
-		}
-		if (isset($pub["location"]) && trim($pub["location"]) != "") {
-			$sep = (substr(trim($pub["location"]), -1) == ".")? "": ".";
-			if (isset($pub["publisherurl"]) && trim($pub["publisherurl"]) != "") {
-				$out .= ' <span class="publisher"><a href="' . trim($pub["publisherurl"]) . '">' . trim($pub["location"]) . '</a>' . $sep . '</span>';
-			} else {
-				$out .= ' <span class="publisher">' . trim($pub["location"]) . $sep . '</span>';
-			}
-		}
-		return $out;
-	}
-
-	private static function format_pages($pub)
-	{
-		$out = "";
-		if (trim($pub["beginpage"]) != "") {
-			$out .= ' <span class="pages">' . trim($pub["beginpage"]);
-			if (trim($pub["endpage"]) != "") {
-				$out .= '-' . trim($pub["endpage"]);
-			} else {
-				$out .= "+";
-			}
-			$out .= '</span>';
-		}
-		return $out;
-	}
-
-	private static function format_issue($pub)
-	{
-		$out = "";
-		if (trim($pub["volume"]) != "") {
-			$out .= ' <span class="volume">' . trim($pub["volume"]) . '</span>';
-		}
-		if (trim($pub["issue"]) != "") {
-			$out .= (trim($pub["volume"]) != "")? ".": "";
-			$out .= '<span class="issue">' . trim($pub["issue"]) . '</span>';
-		}
-		$pages = self::format_pages($pub);
-		if ($pages) {
-			$out .= ': ' . $pages . '.';
-		}
-		return $out;
-	}
-
-	private static function format_status($pub)
-	{
-		$out = "";
-		if (isset($pub["status"]) && $pub["status"] != "Published" && $pub["status"] != "" && strtolower($pub["status"]) != "null") {
-			$out .= ' <span class="publish-status">[' . $pub["status"] . ']</span>';
-		}
-		return $out;
-	}
-
-	private static function format_extras($pub, $display)
-	{
-		$out = "";
-		if ($display["notes"] && isset($pub["notes"]) && trim($pub["notes"]) != "") {
-			$out .= '<p class="notes">' . trim($pub["notes"]) . '</p>';
-		}
-		if ($display["authorurl"] && isset($pub["authorurl"]) && trim($pub["authorurl"]) != "") {
-			$parsed = parse_url(trim($pub["authorurl"]));
-			if ($parsed !== false && isset($parsed["host"]) && trim($parsed["host"]) != "") {
-				$out .= '<p class="authorurl"><a href="' . trim($pub["authorurl"]) . '">Author URL [' . trim($parsed["host"]) . ']</a></p>';				
-			}
-		}
-		if ($display["repositoryurl"] && isset($pub["repositoryurl"]) && trim($pub["repositoryurl"]) != "") {
-			$parsed = parse_url(trim($pub["repositoryurl"]));
-			if ($parsed !== false && isset($parsed["host"]) && trim($parsed["host"]) != "") {
-				$out .= '<p class="repositoryurl"><a href="' . trim($pub["repositoryurl"]) . '">Repository URL [' . trim($parsed["host"]) . ']</a></p>';
-			}
-		}
-		if ($display["abstract"] && isset($pub["abstract"]) && trim($pub["abstract"]) != "") {
-			if ($pub["medium"] == "CD") {
-				$out .= '<p><strong>Track List</strong></p><ol>';
-				$out .= substr(preg_replace('/[0-9]+\. /', '</li><li style="list-style:decimal outside;margin:.5em 0 0 2em;">', $pub["abstract"]), 5) . '</li></ol>';
-			} else {
-				$out .= '<p class="abstract">' . trim($pub["abstract"]) . '</p>';
-			}
-		}
-		return $out;
-	}
-
-	private static function format_date($date, $fromtime = false)
-	{
-		$year = substr($date, 0, 4);
-		$month = substr($date, 5, 2);
-		$day = substr($date, 8, 2);
-		if ($fromtime && (mktime(1, 1, 1, $month, $day, $year) !== false)) {
-			return (date("j M. Y", mktime(1, 1, 1, $month, $day, $year)));
-		}
-		return $day . "/" . $month . "/" . $year;
-	}
-
 }
 StaffProfiles::register();
+
+
+
+
 endif;
 
 ?>
