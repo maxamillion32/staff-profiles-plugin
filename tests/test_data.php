@@ -8,7 +8,7 @@
 require_once('../classes.php');
 function get_test_data()
 {
-	$cache_directory = '/wh_b/www.law.leeds.ac.uk/WWW/assets/cache/cache/staff';
+	$cache_directory = 'D:/www.law.leeds.ac.uk/WWW/assets/cache/cache/staff';
 	$publications = array();
 	$publication_ids = array();
 	$publication_track = array();	
@@ -26,7 +26,7 @@ function get_test_data()
 							$attr = $pub->getAttrNames();
 							$publication = array();
 							foreach ($attr as $att) {
-								$publication[$att] = $pub->getAttr($att);
+								$publication[$att] = clean_symplectic($pub->getAttr($att));
 							}
 							if ( ! isset($publication['status']) ) {
 								$publication['status'] = "Published";
@@ -62,4 +62,8 @@ function has_same_keys($array1, $array2)
 		}
 	}
 	return true;
+}
+function clean_symplectic($text)
+{
+	return $text;
 }

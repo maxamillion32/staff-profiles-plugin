@@ -214,11 +214,77 @@ abstract class sp_publication
  */
 class sp_mhra_publication extends sp_publication
 {
+	public function format_Book()
+	{
+		$out = '<p class="hanging indent">';
+		if ( isset( $this->pub["authors"] ) && trim( $this->pub["authors"] ) != "" ) {
+			$out .= sprintf( '<span class="authors">%s</span>', $this->format_names( $this->pub["authors"] ) );
+		}
+		if ( isset( $this->pub["title"] ) && trim( $this->pub["title"] ) != "" ) {
+			$out .= sprintf( '<span class="title">%s</span>', trim( trim( $this->pub["title"] ), ',.' ) );
+		}
+		if ( isset( $this->pub["editors"] ) && trim( $this->pub["editors"] ) != "" ) {
+			$out .= sprintf( ', ed. by <span class="editors">%s</span>', $this->format_names( $this->pub["editors"] ) );
+		}
+		if ( isset( $this->pub["series"] ) && trim( $this->pub["series"] ) != "" ) {
+			$out .= sprintf( ', <span class="series">%s</span>', trim( trim( $this->pub["series"] ), ',.' ) );
+		}
+		if ( isset( $this->pub["edition"] ) && trim( $this->pub["edition"] ) != "" ) {
+			$out .= sprintf( ', <span class="edition">%s</span>', trim( trim( $this->pub["edition"] ), ',' ) );
+		}
+		$out .= $this->format_publisher();
+		$out .= $this->format_volume_pages();
+		$out .= $this->format_status();
+		$out .= '</p>';
+		$out .= $this->format_extras();
+		return $out;
+	}
+
+	public function format_Chapter()
+	{
+		$out = '<p class="hanging indent">';
+		if ( isset( $this->pub["authors"] ) && trim( $this->pub["authors"] ) != "" ) {
+			$out .= sprintf( '<span class="authors">%s</span>, ', $this->format_names( $this->pub["authors"] ) );
+		}
+		if ( isset( $this->pub["title"] ) && trim( $this->pub["title"] ) != "" ) {
+			$out .= sprintf( '<span class="chapter-title">&lsquo;%s&rsquo;</span>', trim( trim( $this->pub["title"] ), ',."\'“”‘’' ) );
+		}
+		if ( isset( $this->pub["parenttitle"] ) && trim( $this->pub["parenttitle"] ) !== "" ) {
+			$out .= sprintf( ', in <span class="title">%s</span>', trim( trim( $this->pub["parenttitle"] ), ',."\'“”‘’' ) );
+		}
+		if ( isset( $this->pub["editors"] ) && trim( $this->pub["editors"] ) != "" ) {
+			$out .= sprintf( ', ed. by <span class="editors">%s</span>', $this->format_names( $this->pub["editors"] ) );
+		}
+		if ( isset( $this->pub["series"] ) && trim( $this->pub["series"] ) != "" ) {
+			$out .= sprintf( ', <span class="series">%s</span>', trim( trim( $this->pub["series"] ), ',.' ) );
+		}
+		if ( isset( $this->pub["edition"] ) && trim( $this->pub["edition"] ) != "" ) {
+			$out .= sprintf( ', <span class="edition">%s</span>', trim( trim( $this->pub["edition"] ), ',' ) );
+		}
+		$out .= $this->format_publisher();
+		$out .= $this->format_volume_pages();
+		$out .= $this->format_status();
+		$out .= "</p>";
+		$out .= $this->format_extras();
+		return $out;
+	}
+
 	public function format_Journalarticle()
 	{
 		$out = '<p class="hanging indent">';
-		$out .= $this->format_basics();
-		$out .= $this->format_issue();
+		if ( isset( $this->pub["authors"] ) && trim( $this->pub["authors"] ) != "" ) {
+			$out .= sprintf( '<span class="authors"></span>, ', $this->format_names( $this->pub["authors"] ) );
+		}
+		if ( isset( $this->pub["title"] ) && trim( $this->pub["title"] ) != "" ) {
+			$out .= sprintf( '<span class="article-title">%s</span>', trim( trim( $this->pub["title"] ), ',."\'“”‘’' ) );
+		}
+		if ( isset( $this->pub["journal"] ) && trim( $this->pub["journal"] ) !== "" ) {
+			$out .= sprintf(', <span class="journal">%s</span>', trim( $this->pub["journal"] ) );
+		}
+		if ( isset( $this->pub["series"] ) && trim( $this->pub["series"] ) != "" ) {
+			$out .= sprintf(', <span class="series">%s</span>', trim( trim( $this->pub["series"] ), ',.' ) );
+		}
+		$out .= $this->format_volume_pages( true );
 		$out .= $this->format_status();
 		$out .= "</p>";
 		$out .= $this->format_extras();
@@ -258,18 +324,7 @@ class sp_mhra_publication extends sp_publication
 		$out .= $this->format_extras();
 		return $out;
 	}
-
-	public function format_Chapter()
-	{
-		$out = '<p class="hanging indent">';
-		$out .= $this->format_basics();
-		$out .= $this->format_publisher();
-		$out .= $this->format_pages();
-		$out .= $this->format_status();
-		$out .= "</p>";
-		$out .= $this->format_extras();
-		return $out;
-	}
+    
 
 	public function format_Other()
 	{
@@ -283,12 +338,6 @@ class sp_mhra_publication extends sp_publication
 		return $out;
 	}
 
-	public function format_Book()
-	{
-		$out = $this->format_minimal();
-		$out .= $this->format_extras();
-		return $out;
-	}
 
 	public function format_Internetpublication()
 	{
@@ -427,9 +476,12 @@ class sp_mhra_publication extends sp_publication
 	 * formats names of authors and editors
 	 * names are separated by semicolons in symplectic
 	 * up to three names are returned as a list, if more names are present, 
-	 * only the first is returned with "and others" appended to it.
+	 * only the first is returned with "and others" appended to it (unless
+	 * the $truncate parameter is false, which will force listing all names).
+	 * @param string names as a string, separated by semicolons
+	 * @param boolean whether to truncate lists of more than 3 names
 	 */
-	public function format_names($namestr)
+	public function format_names($namestr, $truncate = true)
 	{
 		if ( trim($namestr) == "" ) {
 			return "";
@@ -444,7 +496,12 @@ class sp_mhra_publication extends sp_publication
 		} elseif ( count($names) === 3 ) {
 			return sprintf("%s, %s and %s", $names[0], $names[1], $names[2]);
 		} else {
-			return sprintf("%s and others", $names[0]);
+			if ( true === $truncate ) {
+				return sprintf("%s and others", $names[0]);
+			} else {
+				$lastname = array_pop($names);
+				return sprintf("%s and %s", implode(", ", $names), $lastname);
+			}
 		}
 	}
 
@@ -473,7 +530,7 @@ class sp_mhra_publication extends sp_publication
 			return sprintf(' (<span class="placeofpublication">%s</span>: <span class="publisher">%s</span>, <span class="publicationyear">%s</span>)', $place, $publisher, $year);
 		/* publisher and year */
 		} elseif ( ! empty($publisher) && ! empty($year) ) {
-			return sprintf(' (<span class="placeofpublication">[n.p.]</span>: <span class="publisher">%s</span>, <span class="publicationyear">%s</span>)', $publisher, $year);
+			return sprintf(' (<span class="publisher">%s</span>, <span class="publicationyear">%s</span>)', $publisher, $year);
 		/* place and year */
 		} elseif ( ! empty($place) && ! empty($year) ) {
 			return sprintf(' (<span class="placeofpublication">%s</span>: <span class="publisher">[n.pub.]</span> <span class="publicationyear">%s</span>)', $place, $year);
@@ -482,16 +539,38 @@ class sp_mhra_publication extends sp_publication
 			return sprintf(' (<span class="placeofpublication">%s</span>: <span class="publisher">%s</span>, <span class="publicationyear">[n.d.]</span>)', $place, $publisher);
 		/* publisher only */	
 		} elseif ( ! empty($publisher) ) {
-			return sprintf(' (<span class="placeofpublication">[n.p.]</span>: <span class="publisher">%s</span>, <span class="publicationyear">[n.d.]</span>)', $publisher);
+			return sprintf(' (<span class="publisher">%s</span>, <span class="publicationyear">[n.d.]</span>)', $publisher);
 		/* place only */
 		} elseif ( ! empty($place) ) {
 			return sprintf(' (<span class="placeofpublication">%s</span>: <span class="publisher">[n.pub.]</span>, <span class="publicationyear">[n.d.]</span>)', $place);
 		/* year only */
 		} elseif ( ! empty($year) ) {
-			return sprintf(' (<span class="placeofpublication">[n.p.]</span>: <span class="publisher">[n.pub.]</span>, <span class="publicationyear">%s</span>)', $year);
+			return sprintf(' (<span class="publisher">[n.pub.]</span>, <span class="publicationyear">%s</span>)', $year);
 		} else {
-			return ' (<span class="placeofpublication">[n.p.]</span>: <span class="publisher">[n.pub.]</span>, <span class="publicationyear">[n.d.]</span>';
+			return ' (<span class="publisher">[n.pub.]</span>, <span class="publicationyear">[n.d.]</span>';
 		}
+	}
+
+	/**
+	 * formats the volime and page numbers for all publications in MHRA style
+	 */
+	public function format_volume_pages($with_year = false)
+	{
+		$out = "";
+		if ( isset($this->pub["volume"]) && trim($this->pub["volume"]) != "" ) {
+			$out .= ', <span class="volume">' . trim(trim($this->pub["volume"]), ',') . '</span>';
+		}
+		if ( $with_year && isset($this->pub["publicationyear"]) && trim($this->pub["publicationyear"]) !== "" ) {
+			$out .= sprintf(' (%s)', trim(trim($this->pub["publicationyear"]), '()'));
+		}
+		if ( isset($this->pub["beginpage"]) && trim($this->pub["beginpage"]) != "" ) {
+			$out .= ', <span class="beginpage endpage">' . trim($this->pub["beginpage"]);
+			if ( isset($this->pub["endpage"]) && trim($this->pub["endpage"]) != "" ) {
+				$out .= '-' . trim($this->pub["endpage"]);
+			}
+			$out .= '</span>';
+		}
+		return $out;
 	}
 }
 

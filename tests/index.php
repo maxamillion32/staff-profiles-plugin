@@ -66,8 +66,8 @@ $pub_types = array(
 <head>
 <title>Publications format test page</title>
 <meta charset="UTF-8">
-<link rel="stylesheet" href="http://wwW.pvac.leeds.ac.uk/wp-content/themes/UoL/css/uol.min.css" type="style/css" />
-<link rel="stylesheet" href="../css/people.css" type="style/css" />
+<link rel="stylesheet" href="http://www.pvac.leeds.ac.uk/wp-content/themes/UoL/css/uol.min.css" type="text/css" />
+<link rel="stylesheet" href="../css/people.css" type="text/css" />
 <style type="text/css">
 body {
 	width:100%;
@@ -104,10 +104,9 @@ if ( class_exists( $classname ) ) {
 			if ( $pub['publicationtype'] == $type ) {
 				print(get_symplectic_table($pub));
 				$format_obj->set_publication($pub);
-				printf('<h4>Formatted entry</h4><div class="publication-formatted"><ul class="publications">%s</ul></div>', $format_obj->get_formatted_publication());
+				printf('<h4>Formatted entry</h4><div class="publication-formatted"><ul class="publications %s">%s</ul></div>', $format, $format_obj->get_formatted_publication());
 			}
 		}
-		print('</ul>');
 	}
 } else {
 	die ('class does not exist ' . $classname);
