@@ -149,8 +149,11 @@ get_header();
             	$display_format = 'harvard';
             } elseif ( get_user_meta( $id, 'publication_format_apa', true ) ) {
             	$display_format = 'apa';
-            } else {
+           	} elseif ( get_user_meta( $id, 'publication_format_mhra', true ) ) {
             	$display_format = 'mhra';
+            } else {
+            	$display_format = 'default';
+            }
             }
 
 			$publications = StaffProfiles::get_publications( array(

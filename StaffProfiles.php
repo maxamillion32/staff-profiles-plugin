@@ -55,47 +55,47 @@ class StaffProfiles
 		 ************************************/
 
 		/* add actions to show extra fields in profile form */
-		add_action( 'show_user_profile', array(__CLASS__, 'show_extra_profile_fields_user') );
-		add_action( 'edit_user_profile', array(__CLASS__, 'show_extra_profile_fields_admin') );
+		add_action( 'show_user_profile', array( __CLASS__, 'show_extra_profile_fields_user' ) );
+		add_action( 'edit_user_profile', array( __CLASS__, 'show_extra_profile_fields_admin' ) );
 
 		/* add actions to save extra fields */
-		add_action( 'personal_options_update', array(__CLASS__, 'save_extra_profile_fields_user') );
-		add_action( 'edit_user_profile_update', array(__CLASS__, 'save_extra_profile_fields_admin') );
+		add_action( 'personal_options_update', array( __CLASS__, 'save_extra_profile_fields_user' ) );
+		add_action( 'edit_user_profile_update', array( __CLASS__, 'save_extra_profile_fields_admin' ) );
 
 		/* filter to remove password fields from profile */
-		add_filter('show_password_fields', array(__CLASS__, 'remove_password_fields'), 10, 1);
+		add_filter( 'show_password_fields', array( __CLASS__, 'remove_password_fields' ), 10, 1);
 
 		/* filter to remove contact methods fields from profile */
-		add_filter('user_contactmethods', array(__CLASS__, 'remove_contact_methods'), 10, 1);
+		add_filter( 'user_contactmethods', array( __CLASS__, 'remove_contact_methods' ), 10, 1);
 
 		/* filters to add paste buttons to the teeny mce editor */
-   		add_filter( 'teeny_mce_plugins', array(__CLASS__, 'teeny_mce_plugins'), 10, 2);
-   		add_filter( 'teeny_mce_buttons', array(__CLASS__, 'teeny_mce_buttons'), 10, 2);
+   		add_filter( 'teeny_mce_plugins', array( __CLASS__, 'teeny_mce_plugins' ), 10, 2);
+   		add_filter( 'teeny_mce_buttons', array( __CLASS__, 'teeny_mce_buttons' ), 10, 2);
 
 		/* enqueues scripts for admin side */
-		add_action( 'admin_enqueue_scripts', array(__CLASS__, 'add_admin_scripts'));
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'add_admin_scripts'));
 
 		/************************************
 		 * People post type                 *
 		 ************************************/
 		
 		/* Add People custom post type and staff types taxonomy */
-		add_action( 'init', array(__CLASS__, 'add_custom_type' ), 181 );
+		add_action( 'init', array( __CLASS__, 'add_custom_type' ), 181 );
 
 		/* customise People post type */
-		add_action( 'add_meta_boxes', array(__CLASS__, 'register_metaboxes' ) );
-		add_action( 'save_post', array(__CLASS__,'save_metaboxes' ));
+		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metaboxes' ) );
+		add_action( 'save_post', array( __CLASS__,'save_metaboxes' ));
 
 		/* template redirections */
-		add_filter( 'single_template', array(__CLASS__, 'people_template'));
-		add_filter( 'archive_template', array(__CLASS__, 'people_archive_template'));
+		add_filter( 'single_template', array( __CLASS__, 'people_template' ) );
+		add_filter( 'archive_template', array( __CLASS__, 'people_archive_template' ) );
 
 		/* filter for people listing page in WP admin */
-		add_action( 'restrict_manage_posts' , array(__CLASS__, 'restrict_people_by_type') );
+		add_action( 'restrict_manage_posts' , array( __CLASS__, 'restrict_people_by_type' ) );
 
 		/* extra column for staff types for people listing page in WP admin */
-		add_action( 'manage_edit-people_columns', array(__CLASS__, 'add_people_columns') );
-		add_action( 'manage_people_posts_custom_column', array(__CLASS__, 'show_people_columns'), 10, 2 );
+		add_action( 'manage_edit-people_columns', array( __CLASS__, 'add_people_columns' ) );
+		add_action( 'manage_people_posts_custom_column', array( __CLASS__, 'show_people_columns' ), 10, 2 );
 
 
 		/************************************
@@ -103,10 +103,10 @@ class StaffProfiles
 		 ************************************/
 
 		/* add an admin page */
-		add_action('admin_menu', array(__CLASS__, 'add_admin_page'));
+		add_action( 'admin_menu', array( __CLASS__, 'add_admin_page' ) );
 
 		/* run the upgrade routine */
-		add_action( 'init', array(__CLASS__, 'upgrade'), 182 );
+		add_action( 'init', array( __CLASS__, 'upgrade' ), 182 );
 	}
 	
 	/**
@@ -114,8 +114,17 @@ class StaffProfiles
 	 */
  	public static function add_admin_scripts()
  	{   
-		wp_enqueue_script('staff-profiles-admin-js', plugins_url('/js/admin.min.js', __FILE__), array('jquery'), self::$version, true);
-		wp_enqueue_style('staff-profiles-admin-css', plugins_url('/css/admin.min.css', __FILE__));
+		wp_enqueue_script( 
+			'staff-profiles-admin-js', 
+			plugins_url('/js/admin.min.js', __FILE__), 
+			array('jquery'), 
+			self::$version, 
+			true
+		);
+		wp_enqueue_style( 
+			'staff-profiles-admin-css', 
+			plugins_url('/css/admin.min.css', __FILE__)
+		);
 	}
 
 	/* remove password update field */
@@ -132,12 +141,12 @@ class StaffProfiles
 	
 	public static function show_extra_profile_fields_admin($user)
 	{
-		self::show_extra_profile_fields($user, 'admin');
+		self::show_extra_profile_fields( $user, 'admin' );
 	}
 	
 	public static function show_extra_profile_fields_user($user)
 	{
-		self::show_extra_profile_fields($user, 'user');
+		self::show_extra_profile_fields( $user, 'user' );
 	}
 	
 	/**
@@ -148,22 +157,22 @@ class StaffProfiles
 	{
 		$fields = self::get_profile_fields($priv);
 		$output = "";
-		foreach ($fields as $field) {
-			switch ($field["type"]) {
+		foreach ( $fields as $field ) {
+			switch ( $field["type"] ) {
 				case "richtext":
-					$output .= self::get_textarea($user, $field["name"], $field["label"], $field["description"], true);
+					$output .= self::get_textarea( $user, $field["name"], $field["label"], $field["description"], true );
 					break;
 				case "textarea":
-					$output .= self::get_textarea($user, $field["name"], $field["label"], $field["description"], false);
+					$output .= self::get_textarea( $user, $field["name"], $field["label"], $field["description"], false );
 					break;
 				case "text":
-					$output .= self::get_textinput($user, $field["name"], $field["label"], $field["description"]);
+					$output .= self::get_textinput( $user, $field["name"], $field["label"], $field["description"] );
 					break;
 				case "checkbox":
-					$output .= self::get_checkbox($user, $field["name"], $field["label"], $field["description"]);
+					$output .= self::get_checkbox( $user, $field["name"], $field["label"], $field["description"] );
 					break;
 				case "sortable_types":
-					$output .= self::get_sortable_types($user, $field["name"], $field["label"], $field["description"]);
+					$output .= self::get_sortable_types( $user, $field["name"], $field["label"], $field["description"] );
 					break;
 			}
 		}
@@ -172,12 +181,12 @@ class StaffProfiles
 	
 	public static function save_extra_profile_fields_admin($user_id)
 	{
-		self::save_extra_profile_fields($user_id, 'admin');
+		self::save_extra_profile_fields( $user_id, 'admin' );
 	}
 	
 	public static function save_extra_profile_fields_user($user_id)
 	{
-		self::save_extra_profile_fields($user_id, 'user');
+		self::save_extra_profile_fields( $user_id, 'user' );
 	}
 	
 	/**
@@ -187,31 +196,23 @@ class StaffProfiles
 	public static function save_extra_profile_fields($user_id, $priv)
 	{
 		/* make sure the current user can do this */
-		if ( !current_user_can( 'edit_user', $user_id ) ) {
+		if ( ! current_user_can( 'edit_user', $user_id ) ) {
 			return false;
 		}
-		//print_r($_POST);exit;
 		$fields = self::get_profile_fields($priv);
-		foreach ($fields as $field)
-		{
-			if($field["type"] == 'checkbox')
-			{
-				if(isset($_POST[$field["name"]]))
-				{
-					update_user_meta( $user_id, $field["name"], 1);
+		foreach ( $fields as $field ) {
+			if ( $field["type"] == 'checkbox' ) {
+				if ( isset( $_POST[$field["name"]] ) ) {
+					update_user_meta( $user_id, $field["name"], 1 );
+				} else {
+					update_user_meta( $user_id, $field["name"], 0 );
 				}
-				else
-				{
-					update_user_meta( $user_id, $field["name"], 0);
-				}
-			}
-			else
-			{
+			} else {
 				update_user_meta( $user_id, $field["name"], $_POST[$field["name"]] );
 			}
-			if ($field["name"] == 'pubtypes_sortorder') {
-				if (isset($_POST['pubtypes_sortorder_delete'])) {
-					delete_user_meta( $user_id, 'pubtypes_sortorder');
+			if ( $field["name"] == 'pubtypes_sortorder' ) {
+				if ( isset( $_POST['pubtypes_sortorder_delete'] ) ) {
+					delete_user_meta( $user_id, 'pubtypes_sortorder' );
 				}
 			}
 		}
@@ -1364,7 +1365,7 @@ class StaffProfiles
 		}
 
 		if ( ! in_array( $format, array( 'mhra', 'apa', 'harvard' ) ) ) {
-			$format = 'mhra';
+			$format = 'default';
 		}
 
 		if (!isset($id))
