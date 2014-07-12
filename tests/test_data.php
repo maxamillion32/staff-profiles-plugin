@@ -8,7 +8,7 @@
 require_once('../classes.php');
 function get_test_data()
 {
-	$cache_directory = 'D:/www.law.leeds.ac.uk/WWW/assets/cache/cache/staff';
+	$cache_directory = dirname(__FILE__) . '/data';
 	$publications = array();
 	$publication_ids = array();
 	$publication_track = array();	

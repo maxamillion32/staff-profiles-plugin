@@ -25,14 +25,6 @@ function get_symplectic_table($pub)
 	return $out;
 }
 
-/* set the format */
-$format = 'mhra';
-
-/* check it */
-if ( ! in_array( $format, array( 'mhra', 'apa', 'harvard' ) ) ) {
-	$format = 'mhra';
-}
-
 /* set display filters */
 $display = array(
 	"abstract"      => true,
@@ -73,6 +65,7 @@ body {
 	width:100%;
 	max-width:740px;
 	margin:0 auto;
+	color:#5C5B56;
 }
 table {
 	width:100%;
@@ -93,23 +86,22 @@ table td {
 </head>
 <body>
 <?php
-/* get the class name for this format */
-$classname = 'sp_' . $format . '_publication';
-if ( class_exists( $classname ) ) {
-	$format_obj = new $classname();
-	$format_obj->set_display($display);
-	foreach ($pub_types as $type) {
-		printf('<h3>Publication type: %s</h3>', $type);
-		foreach ( $data as $pub ) {
-			if ( $pub['publicationtype'] == $type ) {
-				print(get_symplectic_table($pub));
-				$format_obj->set_publication($pub);
-				printf('<h4>Formatted entry</h4><div class="publication-formatted"><ul class="publications %s">%s</ul></div>', $format, $format_obj->get_formatted_publication());
-			}
+/* go through the test data outputting raw symplectic data, and formatted data using different formatting classes */
+$mhra_obj = new sp_mhra_publication();
+$mhra_obj->set_display($display);
+$default_obj = new sp_default_publication();
+$default_obj->set_display($display);
+foreach ($pub_types as $type) {
+	printf('<h3>Publication type: %s</h3>', $type);
+	foreach ( $data as $pub ) {
+		if ( $pub['publicationtype'] == $type ) {
+			print(get_symplectic_table($pub));
+			$default_obj->set_publication($pub);
+			printf('<h4>Default formatted entry</h4><div class="publication-formatted"><ul class="publications">%s</ul></div>', $default_obj->get_formatted_publication());
+			$mhra_obj->set_publication($pub);
+			printf('<h4>MHRA formatted entry</h4><div class="publication-formatted"><ul class="publications mhra">%s</ul></div>', $mhra_obj->get_formatted_publication());
 		}
 	}
-} else {
-	die ('class does not exist ' . $classname);
 }
 ?>
 <script type="text/javascript" src="../js/people.js"></script>

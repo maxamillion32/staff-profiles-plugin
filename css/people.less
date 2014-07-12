@@ -177,12 +177,6 @@ ul.publications {
 			margin:0;
 		}
 	}
-	.indent {
-		padding-left: 3em;
-		&.hanging {
-			text-indent: -3em;
-		}
-	}
 
 	/* default publication formatting */
 	.authors {
@@ -218,29 +212,35 @@ ul.publications {
 
 	/* MHRA publication formatting */
 	&.mhra {
+		.indent {
+			padding-left: 3em;
+			&.hanging {
+				text-indent: -3em;
+			}
+		}
 		.authors {
-			colour: @textColour;
+			color: @textColour;
 			font-weight: normal;
 		}
 		.title,
 		.parent-title,
 		.journal {
-			colour: @textColour;
+			color: @textColour;
 			font-style:italic;
 		}
 		.title-with-parent {
-			colour: @textColour;
+			color: @textColour;
 			font-style:normal;
 		}
 		.volume {
 			font-weight: normal;
 		}
 		.issue {
-			colour: @textColour;
+			color: @textColour;
 		}
 		.startdate,
 		.finishdate {
-			colour: @textColour;
+			color: @textColour;
 			font-style:normal;
 		}
 

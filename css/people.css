@@ -153,6 +153,8 @@ ul.publications {
   background: none;
   padding-left: 0;
   margin: 1em 0;
+  /* default publication formatting */
+  /* MHRA publication formatting */
 }
 ul.publications li {
   list-style: none;
@@ -161,25 +163,63 @@ ul.publications li {
 ul.publications li p {
   margin: 0;
 }
-ul.publications .indent {
+ul.publications .authors {
+  color: #666;
+  font-weight: bold;
+}
+ul.publications .title,
+ul.publications .parent-title,
+ul.publications .journal {
+  color: #333;
+  font-style: italic;
+}
+ul.publications .title-with-parent {
+  color: #333;
+  font-style: normal;
+}
+ul.publications .volume {
+  font-weight: bold;
+}
+ul.publications .issue {
+  color: #666;
+}
+ul.publications .startdate,
+ul.publications .finishdate {
+  color: #666;
+  font-style: italic;
+}
+ul.publications .publish-status {
+  color: #966;
+  font-style: italic;
+}
+ul.publications.mhra .indent {
   padding-left: 3em;
 }
-ul.publications .indent.hanging {
+ul.publications.mhra .indent.hanging {
   text-indent: -3em;
+}
+ul.publications.mhra .authors {
+  color: #5c5b56;
+  font-weight: normal;
 }
 ul.publications.mhra .title,
 ul.publications.mhra .parent-title,
 ul.publications.mhra .journal {
+  color: #5c5b56;
   font-style: italic;
 }
 ul.publications.mhra .title-with-parent {
+  color: #5c5b56;
   font-style: normal;
+}
+ul.publications.mhra .volume {
+  font-weight: normal;
+}
+ul.publications.mhra .issue {
+  color: #5c5b56;
 }
 ul.publications.mhra .startdate,
 ul.publications.mhra .finishdate {
-  font-style: italic;
-}
-ul.publications.mhra .publish-status {
-  color: #966;
-  font-style: italic;
+  color: #5c5b56;
+  font-style: normal;
 }

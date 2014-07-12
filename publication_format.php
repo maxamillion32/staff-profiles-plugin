@@ -91,7 +91,7 @@ abstract class sp_publication
 	 * artefacts do not contain a publisher field, so the Location field is used instead
 	 * also, the medium field is inserted before the publisher
 	 */
-	public function format_artefact_publisher($pub)
+	public function format_artefact_publisher()
 	{
 		$out = "";
 		if ( isset($this->pub["medium"]) && trim($this->pub["medium"]) != "" ) {
@@ -173,6 +173,7 @@ abstract class sp_publication
 		}
 		if ($this->display["authorurl"] && isset($this->pub["authorurl"]) && trim($this->pub["authorurl"]) != "") {
 			$parsed = parse_url(trim($this->pub["authorurl"]));
+			print_r($parsed);
 			if ($parsed !== false && isset($parsed["host"]) && trim($parsed["host"]) != "") {
 				$out .= '<p class="authorurl indent"><a href="' . trim($this->pub["authorurl"]) . '">Author URL [' . trim($parsed["host"]) . ']</a></p>';				
 			}
@@ -218,7 +219,7 @@ class sp_mhra_publication extends sp_publication
 	{
 		$out = '<p class="hanging indent">';
 		if ( isset( $this->pub["authors"] ) && trim( $this->pub["authors"] ) != "" ) {
-			$out .= sprintf( '<span class="authors">%s</span>', $this->format_names( $this->pub["authors"] ) );
+			$out .= sprintf( '<span class="authors">%s</span>, ', $this->format_names( $this->pub["authors"] ) );
 		}
 		if ( isset( $this->pub["title"] ) && trim( $this->pub["title"] ) != "" ) {
 			$out .= sprintf( '<span class="title">%s</span>', trim( trim( $this->pub["title"] ), ',.' ) );
@@ -891,7 +892,7 @@ class sp_default_publication extends sp_publication
 			}
 		}
 		if ($this->display["abstract"] && isset($this->pub["abstract"]) && trim($this->pub["abstract"]) != "") {
-			if ($this->pub["medium"] == "CD") {
+			if ( isset ($this->pub['medium']) && $this->pub["medium"] == "CD") {
 				$out .= '<p><strong>Track List</strong></p><ol>';
 				$out .= substr(preg_replace('/[0-9]+\. /', '</li><li style="list-style:decimal outside;margin:.5em 0 0 2em;">', $this->pub["abstract"]), 5) . '</li></ol>';
 			} else {
