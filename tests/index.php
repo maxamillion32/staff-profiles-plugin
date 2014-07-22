@@ -81,6 +81,12 @@ table td {
 .publication-formatted {
 	border:1px dotted #333;
 }
+h3 {
+	padding:2em;
+	margin:1em 0;
+	background:#ccc;
+	border:2px dashed #999;
+}
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 </head>

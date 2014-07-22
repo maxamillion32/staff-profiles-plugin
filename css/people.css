@@ -204,7 +204,8 @@ ul.publications.mhra .authors {
 }
 ul.publications.mhra .title,
 ul.publications.mhra .parent-title,
-ul.publications.mhra .journal {
+ul.publications.mhra .journal,
+ul.publications.mhra .publishedproceedings {
   color: #5c5b56;
   font-style: italic;
 }
