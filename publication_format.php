@@ -13,11 +13,11 @@ abstract class sp_publication
 	/**
 	 * interface type of thing
 	 */
+	abstract protected function format_Book();
+	abstract protected function format_Chapter();
 	abstract protected function format_Journalarticle();
 	abstract protected function format_Conference();
-	abstract protected function format_Chapter();
 	abstract protected function format_Other();
-	abstract protected function format_Book();
 	abstract protected function format_Internetpublication();
 	abstract protected function format_Composition();
 	abstract protected function format_Performance();
@@ -73,8 +73,8 @@ abstract class sp_publication
 	{
 		$out = "";
 		if (isset($this->pub["placeofpublication"]) && trim($this->pub["placeofpublication"]) != "") {
-			$sep = (substr(trim($this->pub["placeofpublication"]), -1) == ":")? "": ":";
-			$out .= ' <span class="placeofpublication">' . trim($this->pub["placeofpublication"]) . $sep . '</span>';
+			$place = (trim(trim($this->pub["placeofpublication"]), ':;');
+			$out .= '<span class="placeofpublication">' . $place . '</span>: ';
 		}
 		if (isset($this->pub["publisher"]) && trim($this->pub["publisher"]) != "") {
 			$sep = (substr(trim($this->pub["publisher"]), -1) == ".")? "": ".";
@@ -157,7 +157,7 @@ abstract class sp_publication
 	{
 		$out = "";
 		if (isset($this->pub["status"]) && $this->pub["status"] != "Published" && $this->pub["status"] != "" && strtolower($this->pub["status"]) != "null") {
-			$out .= ' <span class="status">[' . $this->pub["status"] . ']</span>';
+			$out .= ' (<span class="status">' . $this->pub["status"] . '</span>)';
 		}
 		return $out;
 	}
@@ -487,10 +487,17 @@ class sp_mhra_publication extends sp_publication
 			if ( trim( $this->pub["journal"] ) == strtoupper( trim( $this->pub["journal"] ) ) ) {
 				$this->pub["journal"] = ucwords( trim( $this->pub["journal"] ) );
 			}
-			$out .= sprintf(', <span class="journal">%s</span>', trim( $this->pub["journal"] ) );
+		if ( isset($this->pub["parenttitle"]) && trim($this->pub["parenttitle"]) !== "" ) {
+			$out .= ',</span> ';
+			$out .= '<em>in </em> ';
+			$out .= ' <span class="parent-title">' . trim($this->pub["parenttitle"]);
 			if ( isset( $this->pub["editors"] ) && trim( $this->pub["editors"] ) != "" ) {
 				$out .= sprintf( ', ed. by <span class="editors">%s</span>', $this->format_names( $this->pub["editors"] ) );
 			}
+		}
+		if ( isset($this->pub["series"]) && trim($this->pub["series"]) != "" ) {
+			$sep = (substr(trim($this->pub["series"]), -1) == ".")? "": ".";
+			$out .= ' <span class="series">' . trim($this->pub["series"]) . $sep . '</span> ';
 		}
 		if ( isset($this->pub["edition"]) && trim($this->pub["edition"]) != "" ) {
 			$out .= sprintf( ', <span class="edition">%s</span>', trim($this->pub["edition"]) );
@@ -581,7 +588,7 @@ class sp_mhra_publication extends sp_publication
 	}
 
 	/**
-	 * formats the volime and page numbers for all publications in MHRA style
+	 * formats the volume and page numbers for all publications in MHRA style
 	 */
 	public function format_volume_pages($journal_article = false)
 	{
@@ -608,6 +615,318 @@ class sp_mhra_publication extends sp_publication
 			$out .= '</span>';
 		}
 		return $out;
+	}
+}
+
+/**
+ * default publication format
+ */
+class sp_apa_publication extends sp_publication
+{
+	public function format_Journalarticle()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_issue();
+		$out .= self::format_status();
+		$out .= "</p>";
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Conference()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		if (trim($this->pub["conferencename"]) != "") {
+			$out .= '<span class="conferencename">' . trim($this->pub["conferencename"]) . '</span> ';
+		}
+		if (trim($this->pub["location"]) != "") {
+			$out .= '<span class="location">(' . trim($this->pub["location"]) . ')</span> ';
+		}
+		if (isset($this->pub["startdate"]) && trim($this->pub["startdate"]) != "") {
+			$out .= '<span class="conferencedate">' . self::format_date(trim($this->pub["startdate"]), true);
+			if (isset($this->pub["finishdate"]) && trim($this->pub["finishdate"]) != "") {
+				$out .= " - " . self::format_date(trim($this->pub["finishdate"]), true);
+			}
+			$out .= '</span> ';
+		}
+		if (isset($this->pub["publishedproceedings"]) && trim($this->pub["publishedproceedings"]) != "") {
+			$out .= '<span class="publishedproceedings">Proceedings: ';
+			if (strpos(trim($this->pub["publishedproceedings"]), 'http') === 0) {
+				$out .= sprintf('<a href="%s">%s</a>', trim($this->pub["publishedproceedings"]), trim($this->pub["publishedproceedings"]));
+			} else {
+				$out .= trim($this->pub["publishedproceedings"]);
+			}
+			$out .= '</span> ';
+		}
+		$out .= self::format_publisher();
+		$out .= self::format_issue();
+		$out .= self::format_status();
+		$out .= "</p>";
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Chapter()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_publisher();
+		$out .= self::format_pages();
+		$out .= self::format_status();
+		$out .= "</p>";
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Other()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_publisher();
+		$out .= self::format_issue();
+		$out .= self::format_status();
+		$out .= "</p>";
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Book()
+	{
+		$out = self::format_minimal();
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Internetpublication()
+	{
+		$out = self::format_minimal();
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Composition()
+	{
+		$out = self::format_musical();
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Performance()
+	{
+		$out = self::format_musical();
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Report()
+	{
+		$out = self::format_minimal();
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Artefact()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_artefact_publisher();
+		$out .= self::format_status();
+		$out .= "</p>";
+		$out .= self::format_extras();
+		return $out;
+	}
+
+	public function format_Design()
+	{
+		return self::format_minimal();
+	}
+
+	public function format_Scholarlyedition()
+	{
+		return self::format_minimal();
+	}
+
+	public function format_ThesisDissertation()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		if (isset($this->pub["fileddate"]) && trim($this->pub["fileddate"]) != "") {
+			$out .= ' <span class="fileddate">' . self::format_date($this->pub["fileddate"], true) . '</span> ';
+		}
+		$out .= self::format_status();
+		$out .= "</p>";
+	}
+
+	public function format_minimal()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_publisher();
+		$out .= self::format_status();
+		$out .= "</p>";
+		return $out;
+	}
+
+	public function format_musical()
+	{
+		$out = "<p>";
+		$out .= self::format_basics();
+		$out .= self::format_publisher();
+		if (isset($this->pub["medium"]) && trim($this->pub["medium"]) !== "") {
+			$out .= '<span class="music-medium">' . trim($this->pub["medium"]) . '</span> ';
+		}
+		if (isset($this->pub["startdate"]) && trim($this->pub["startdate"]) != "") {
+			$out .= '<span class="startdate">' . self::format_date(trim($this->pub["startdate"]), true) . '</span> ';
+		}
+		$out .= self::format_status();
+		$out .= "</p>";
+		return $out;
+	}
+
+	public function format_basics()
+	{
+		$out = "";
+		if (trim($this->pub["authors"]) != "") {
+			$out .= '<span class="authors">' . trim($this->pub["authors"]) . '</span> ';
+		} else {
+			if (isset($this->pub["editors"]) && trim($this->pub["editors"]) != "") {
+				$out .= '<span class="authors">' . trim($this->pub["editors"]) . ' (eds.) </span>';
+			}
+		}
+		if (isset($this->pub["publicationyear"]) && trim($this->pub["publicationyear"]) != "") {
+			$out .= '<span class="publicationyear">(' . trim($this->pub["publicationyear"]) . ')</span> ';
+		}
+		if (trim($this->pub["title"]) != "") {
+			if ((isset($this->pub["parenttitle"]) && trim($this->pub["parenttitle"]) !== "") || (isset($this->pub["journal"]) && trim($this->pub["journal"]) !== "")) {
+				$class = "title-with-parent";
+				$title = "&ldquo;" . trim($this->pub["title"]) . "&rdquo;";
+			} else {
+				$class = "title";
+				$title = trim($this->pub["title"]);
+			}
+			$out .= '<span class="' . $class . '">' . $title;
+		}
+		if (isset($this->pub["parenttitle"]) && trim($this->pub["parenttitle"]) !== "") {
+			$out .= ',</span> ';
+			$out .= '<em>In:</em> ';
+			if (isset($this->pub["editors"]) && trim($this->pub["editors"]) != "") {
+				$out .= ' <span class="editors">' . trim($this->pub["editors"]) . ' (eds.)</span>';
+			}
+			$out .= ' <span class="parent-title">' . trim($this->pub["parenttitle"]);
+		}
+		if (isset($this->pub["journal"]) && trim($this->pub["journal"]) !== "") {
+			$out .= ',</span> ';
+			$out .= '<span class="journal">' . trim($this->pub["journal"]);
+			if (isset($this->pub["editors"]) && trim($this->pub["editors"]) != "") {
+				$out .= ' <span class="editors">' . trim($this->pub["editors"]) . ' (eds.)</span>';
+			}
+		}
+		$out .= '.</span> ';
+		if (isset($this->pub["edition"]) && trim($this->pub["edition"]) != "") {
+			$sep = (substr(trim($this->pub["edition"]), -1) == ".")? "": ".";
+			$out .= ' <span class="edition">' . trim($this->pub["edition"]) . $sep . '</span> ';
+		}
+		if (isset($this->pub["series"]) && trim($this->pub["series"]) != "") {
+			$sep = (substr(trim($this->pub["series"]), -1) == ".")? "": ".";
+			$out .= ' <span class="series">' . trim($this->pub["series"]) . $sep . '</span> ';
+		}
+		return $out;
+	}
+
+	public function format_publisher()
+	{
+		$out = "";
+		if (isset($this->pub["placeofpublication"]) && trim($this->pub["placeofpublication"]) != "") {
+			$sep = (substr(trim($this->pub["placeofpublication"]), -1) == ":")? "": ":";
+			$out .= ' <span class="publish-place">' . trim($this->pub["placeofpublication"]) . $sep . '</span>';
+		}
+		if (isset($this->pub["publisher"]) && trim($this->pub["publisher"]) != "") {
+			$sep = (substr(trim($this->pub["publisher"]), -1) == ".")? "": ".";
+			if (isset($this->pub["publisherurl"]) && trim($this->pub["publisherurl"]) != "") {
+				$out .= ' <span class="publisher"><a href="' . trim($this->pub["publisherurl"]) . '">' . trim($this->pub["publisher"]) . '</a>' . $sep . '</span>';
+			} else {
+				$out .= ' <span class="publisher">' . trim($this->pub["publisher"]) . $sep . '</span>';
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * artefacts do not contain a publisher field, so the Location field is used instead
+	 * also, the medium field is inserted before the publisher
+	 */
+	public function format_artefact_publisher()
+	{
+		$out = "";
+		if (isset($this->pub["medium"]) && trim($this->pub["medium"]) != "") {
+			$sep = (substr(trim($this->pub["medium"]), -1) == ":")? "": ":";
+			$out .= ' <span class="publish-medium">' . trim($this->pub["medium"]) . $sep . '</span>';
+		}
+		if (isset($this->pub["location"]) && trim($this->pub["location"]) != "") {
+			$sep = (substr(trim($this->pub["location"]), -1) == ".")? "": ".";
+			if (isset($this->pub["publisherurl"]) && trim($this->pub["publisherurl"]) != "") {
+				$out .= ' <span class="publisher"><a href="' . trim($this->pub["publisherurl"]) . '">' . trim($this->pub["location"]) . '</a>' . $sep . '</span>';
+			} else {
+				$out .= ' <span class="publisher">' . trim($this->pub["location"]) . $sep . '</span>';
+			}
+		}
+		return $out;
+	}
+
+	public function format_issue()
+	{
+		$out = "";
+		if (trim($this->pub["volume"]) != "") {
+			$out .= ' <span class="volume">' . trim($this->pub["volume"]) . '</span>';
+		}
+		if (trim($this->pub["issue"]) != "") {
+			$issue .= (trim($this->pub["issue"], ' ().,');
+			$out .= '(<span class="issue">' . $issue . '</span>)';
+		}
+		$pages = self::format_pages();
+		if ($pages) {
+			$out .= ': ' . $pages . '.';
+		}
+		return $out;
+	}
+
+	/**
+	 * formats names of authors and editors
+	 * names are separated by semicolons in symplectic
+	 * up to six names are returned as a list, if more names are present, 
+	 * only the first six are returned with " et al." appended to it (unless
+	 * the $truncate parameter is false, which will force listing all names).
+	 * @param string names as a string, separated by semicolons
+	 * @param boolean whether to truncate lists of more than 6 names
+	 */
+	public function format_names($namestr, $truncate = true)
+	{
+		if ( trim($namestr) == "" ) {
+			return "";
+		}
+		$names = array_map( 'trim', explode( ";", $namestr ) );
+		if ( ! count($names) ) {
+			return "";
+		} elseif ( count($names) === 1 ) {
+			return $names[0];
+		} elseif ( count($names) === 2 ) {
+			return sprintf("%s &amp; %s", $names[0], $names[1]);
+		} elseif ( count($names) <= 6 ) {
+			$lastname = array_pop($names);
+			return sprintf("%s &amp; %s", implode(", ", $names), $lastname);
+		} else {
+			if ( true === $truncate ) {
+				while ( count($names > 6) ) {
+					array_pop($names);
+				}
+				return sprintf("%s et al.", implode(", ", $names));
+			} else {
+				$lastname = array_pop($names);
+				return sprintf("%s &amp; %s", implode(", ", $names), $lastname);
+			}
+		}
 	}
 }
 
