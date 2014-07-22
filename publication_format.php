@@ -479,18 +479,21 @@ class sp_mhra_publication extends sp_publication
 		if ( isset($this->pub["authors"]) && trim($this->pub["authors"]) != "" ) {
 			$out .= '<span class="authors">' . $this->format_names($this->pub["authors"]) . '</span>, ';
 		}
-		if ( isset($this->pub["title"]) && trim($this->pub["title"]) != "" ) {
-			$class = ( isset( $this->pub["journal"] ) && trim( $this->pub["journal"] ) !== "" )? 'title-with-parent': 'title';
-			$out .= sprintf( '<span class="%s">%s</span>', $class, trim( trim( $this->pub["title"] ), ',."\'“”‘’' ) );
-		}
+		$parent = false;
 		if ( isset( $this->pub["journal"] ) && trim( $this->pub["journal"] ) !== "" ) {
 			if ( trim( $this->pub["journal"] ) == strtoupper( trim( $this->pub["journal"] ) ) ) {
 				$this->pub["journal"] = ucwords( trim( $this->pub["journal"] ) );
 			}
-		if ( isset($this->pub["parenttitle"]) && trim($this->pub["parenttitle"]) !== "" ) {
-			$out .= ',</span> ';
-			$out .= '<em>in </em> ';
-			$out .= ' <span class="parent-title">' . trim($this->pub["parenttitle"]);
+			$parent = $this->pub["journal"];
+		} elseif ( isset($this->pub["parenttitle"]) && trim($this->pub["parenttitle"]) !== "" ) {
+			$parent = trim($this->pub["parenttitle"]);
+		}
+		if ( isset($this->pub["title"]) && trim($this->pub["title"]) != "" ) {
+			$class = ( $parent )? 'title-with-parent': 'title';
+			$out .= sprintf( '<span class="%s">%s</span>', $class, trim( trim( $this->pub["title"] ), ',."\'“”‘’' ) );
+		}
+		if ($parent) {
+			$out .= sprintf(', <em>in</em> <span class="parent-title">%s</span>', trim($this->pub["parenttitle"]) );
 			if ( isset( $this->pub["editors"] ) && trim( $this->pub["editors"] ) != "" ) {
 				$out .= sprintf( ', ed. by <span class="editors">%s</span>', $this->format_names( $this->pub["editors"] ) );
 			}
