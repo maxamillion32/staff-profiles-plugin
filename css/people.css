@@ -155,6 +155,7 @@ ul.publications {
   margin: 1em 0;
   /* default publication formatting */
   /* MHRA publication formatting */
+  /* MHRA publication formatting */
 }
 ul.publications li {
   list-style: none;
@@ -221,6 +222,38 @@ ul.publications.mhra .issue {
 }
 ul.publications.mhra .startdate,
 ul.publications.mhra .finishdate {
+  color: #5c5b56;
+  font-style: normal;
+}
+ul.publications.apa .indent {
+  padding-left: 3em;
+}
+ul.publications.apa .indent.hanging {
+  text-indent: -3em;
+}
+ul.publications.apa .authors {
+  color: #5c5b56;
+  font-weight: normal;
+}
+ul.publications.apa .title,
+ul.publications.apa .parent-title,
+ul.publications.apa .journal,
+ul.publications.apa .publishedproceedings {
+  color: #5c5b56;
+  font-style: italic;
+}
+ul.publications.apa .title-with-parent {
+  color: #5c5b56;
+  font-style: normal;
+}
+ul.publications.apa .volume {
+  font-weight: normal;
+}
+ul.publications.apa .issue {
+  color: #5c5b56;
+}
+ul.publications.apa .startdate,
+ul.publications.apa .finishdate {
   color: #5c5b56;
   font-style: normal;
 }

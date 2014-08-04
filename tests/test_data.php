@@ -22,6 +22,7 @@ function get_test_data()
 					fclose($fh);
 					$data = unserialize($input);
 					if ( count($data) ) {
+						$used = false;
 						foreach ($data as $pub) {
 							$attr = $pub->getAttrNames();
 							$publication = array();
@@ -41,9 +42,17 @@ function get_test_data()
 								}
 								if ( ! $found ) {
 									$publications[] = $publication;
+									$used = true;
 								}
 							}
 						}
+						if ( ! $used ) {
+							/* delete files which aren't used */
+							@unlink($filepath);
+						}
+					} else {
+						/* delete empty files */
+						@unlink($filepath);
 					}
 				}
 			}
@@ -67,3 +76,4 @@ function clean_symplectic($text)
 {
 	return $text;
 }
+//print('<pre>' . print_r(get_test_data(), true) . '</pre>');

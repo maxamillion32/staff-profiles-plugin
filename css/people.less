@@ -246,4 +246,40 @@ ul.publications {
 		}
 
 	}
+	/* MHRA publication formatting */
+	&.apa {
+		.indent {
+			padding-left: 3em;
+			&.hanging {
+				text-indent: -3em;
+			}
+		}
+		.authors {
+			color: @textColour;
+			font-weight: normal;
+		}
+		.title,
+		.parent-title,
+		.journal,
+		.publishedproceedings {
+			color: @textColour;
+			font-style:italic;
+		}
+		.title-with-parent {
+			color: @textColour;
+			font-style:normal;
+		}
+		.volume {
+			font-weight: normal;
+		}
+		.issue {
+			color: @textColour;
+		}
+		.startdate,
+		.finishdate {
+			color: @textColour;
+			font-style:normal;
+		}
+
+	}
 }
